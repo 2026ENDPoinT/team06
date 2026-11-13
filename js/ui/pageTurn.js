@@ -20,12 +20,16 @@
  *    - 아무리 내려가도 제목은 보이도록 TAB_MAX 로 제한.
  *      예) 성적 분석에 있을 때: 성적 분석(앞) > 과목·성적(18px) > 메인(26px)
  *
- * 3. 넘김 방향 (turn) — 축은 왼쪽 책등
- *    - 뒷페이지로: 이전 페이지 복사본(.turning)이 새 페이지 위에서 넘어간다. 0.7초
- *      로그인 → 메인이면 가죽 표지가 열린다(.cover). 1초
- *    - 앞페이지로: 이전 페이지 복사본(.under)이 밑에 깔리고, 새 페이지(.returning)가
- *      뒤에서 되돌아와 덮는다. 로그아웃이면 표지가 덮인다. 1초
- *    - 90° 를 넘기면 페이지 뒷면(종이 뒷면 / 표지 안쪽)이 보이고 180° 까지 이어진다.
+ * 3. 넘김 (turn) — 2D 페이지 컬. 3D 회전 없이 종이가 접히는 선만 계산한다.
+ *    오른쪽 아래 귀퉁이를 잡아 책등(왼쪽) 너머로 끌고 가는 모양:
+ *      · 넘어가는 페이지는 접힌 선 바깥쪽이 clip-path 로 잘려 나가고
+ *      · 잘린 부분을 접힌 선에 대칭시킨 "뒷면"을 캔버스(.page-flap)에 그린다.
+ *        뒷면의 명암(접힌 곳 그늘 → 밝은 띠)과 밑 페이지에 지는 그림자가 종이가 휜 느낌을 낸다.
+ *    - 뒷페이지로: 이전 페이지 복사본(.turning)이 새 페이지 위에서 말려 넘어간다.
+ *      다 넘어가면 넘어간 페이지들의 책갈피가 페이지 뒤에서 제자리로 올라온다.
+ *    - 앞페이지로: ① 꺼내올 앞페이지들의 책갈피가 천천히 밑으로 내려가 페이지 뒤로 사라지고 (SINK)
+ *                 ② 그 페이지가 책등 쪽에서 되말려 나와 지금 페이지(.under)를 덮는다.
+ *    - 로그인 ↔ 메인은 가죽 표지가 같은 방식으로 넘어간다 (뒷면 = 표지 안쪽 색).
  *
  * 4. 함께 넘어가는 책갈피
  *    두 페이지 사이의 페이지들(앞쪽 페이지 ~ 뒤쪽 페이지 직전)의 책갈피.
@@ -34,17 +38,18 @@
  *    묶음의 맨 앞 페이지 책갈피는 "지금 페이지" 모양, 나머지는 그 페이지 기준 깊이만큼
  *    내려가 위로 드러난 부분만 보인다. 넘어가는 동안 진짜 책갈피는 숨긴다.
  *
- * 5. 설정 리본: 설정 페이지에서는 위로 젖혀져 페이지 위쪽에 펼쳐진다.  (CSS .ribbon.active)
+ * 5. 설정 책갈피: 책 오른쪽 옆에 꽂힌 빨간 책갈피. 페이지 밖(.book)에 있어 페이지와 함께 넘어가지 않는다.
+ *    평소엔 종이 더미 뒤에 박혀 있고, 설정 페이지에서는 페이지 앞으로 나온다.  (CSS .bookmark)
  *
- * 6. 로그인 표지: 노트 종이·책갈피·리본을 숨기고 표지가 페이지 크기만큼 늘어난다.
+ * 6. 로그인 표지: 노트 종이·책갈피를 숨기고 표지가 페이지 크기만큼 늘어난다.
  *    모든 페이지(표지 포함) 세로 길이는 최소 메인 화면 높이.  (CSS body.locked, Tabs.mainHeight)
  *
  * 7. "애니메이션 줄이기" 설정 사용자는 넘김 없이 바로 바뀐다.
  *
  * ── 조절 손잡이 ─────────────────────────────────────────────────────
  *  - 순서·하강치: 아래 ORDER / TAB_STEP / TAB_MAX
- *  - 지금 페이지 책갈피 모양, 넘김 속도·뒷면 색, 리본: css/base.css
- *    "인덱스 탭", "페이지 넘김", "설정 리본" 구역
+ *  - 넘김 속도·귀퉁이가 들리는 높이: 아래 DUR / SINK / LIFT
+ *  - 지금 페이지 책갈피 모양: css/base.css "인덱스 탭", "설정 책갈피" 구역
  */
 const PageTurn = {
   /** 페이지 순서 (앞 → 뒤). 여기 없는 화면(로그인)은 맨 앞(-1) */
@@ -54,9 +59,16 @@ const PageTurn = {
   TAB_STEP: 8,
   TAB_MAX: 26,
 
+  /** 넘김 시간(ms), 앞페이지 책갈피가 가라앉는 시간(ms), 귀퉁이가 들리는 높이(페이지 너비 대비) */
+  DUR: 500,
+  SINK: 200,
+  LIFT: 0.16,
+
   /** 1) 화면이 바뀌면 다시 그리기 전에 지금 페이지를 복사해 둔다 */
   capture(page, prev, name) {
-    return prev && prev !== name ? page.cloneNode(true) : null;
+    if (!prev || prev === name) return null;
+    this.finish?.(); // 넘기는 도중에 또 넘기면 앞의 연출은 바로 끝낸다
+    return page.cloneNode(true);
   },
 
   /** 3) 책갈피 높이 정리 (규칙 2) */
@@ -75,33 +87,170 @@ const PageTurn = {
 
   /** 4) 넘김 연출 (규칙 3, 4) */
   turn(page, oldPage, prev, name) {
-    if (!oldPage) return;
-    const forward = this.ORDER.indexOf(name) > this.ORDER.indexOf(prev);
+    if (!oldPage || matchMedia("(prefers-reduced-motion: reduce)").matches) return; // 규칙 7
+    const from = this.ORDER.indexOf(prev);
+    const to = this.ORDER.indexOf(name);
+    const forward = to > from;
+    const moving = forward ? oldPage : page;
+    const tabOf = (n) => document.querySelector(`[data-tab="${n}"]:not(.page *)`); // 인덱스 탭 + 설정 책갈피 (복사본 제외)
+
     oldPage.removeAttribute("id");
-    oldPage.classList.remove("returning");
     oldPage.classList.toggle("cover", prev === "login");
     oldPage.classList.add(forward ? "turning" : "under");
     if (!forward) page.classList.add("returning");
+    page.after(oldPage);
 
-    const moving = forward ? oldPage : page;
-    const [a, b] = [this.ORDER.indexOf(prev), this.ORDER.indexOf(name)].sort((x, y) => x - y);
-    const names = a < 0 ? [] : this.ORDER.slice(a, b); // 로그인 표지가 넘어갈 땐 책갈피 없음
-    const tabs = names
-      .map((n) => document.querySelector(`.tabs .tab[data-tab="${n}"]`))
-      .filter(Boolean);
+    // 함께 넘어가는 책갈피 (규칙 4)
+    const a = Math.min(from, to);
+    const names = a < 0 ? [] : this.ORDER.slice(a, Math.max(from, to)); // 로그인 표지가 넘어갈 땐 책갈피 없음
+    const tabs = names.map(tabOf).filter(Boolean);
     const copies = tabs.map((tab) => this.tabCopy(tab, page, a));
     moving.append(...copies);
-    tabs.forEach((tab) => (tab.style.visibility = "hidden")); // 넘어가는 동안엔 복사본만 보이게
 
-    moving.addEventListener("animationend", function done(e) {
-      if (e.target !== moving) return;
-      moving.removeEventListener("animationend", done);
+    const W = moving.offsetWidth;
+    const H = moving.offsetHeight;
+    const lift = Math.min(W * this.LIFT, 160);
+    const top = lift + 80; // 캔버스 위쪽 여유: 들린 귀퉁이 + 책갈피
+    const canvas = document.createElement("canvas");
+    canvas.className = "page-flap";
+    // ponytail: 캔버스는 1배율(고해상도 화면에선 뒷면 가장자리가 살짝 부드러움). 거슬리면 devicePixelRatio 곱하기
+    canvas.width = W * 2;
+    canvas.height = H + top + 60;
+    canvas.style.left = `${page.offsetLeft - W}px`;
+    canvas.style.top = `${page.offsetTop - top}px`;
+    page.parentElement.append(canvas);
+    const ctx = canvas.getContext("2d");
+
+    const css = getComputedStyle(page);
+    const back = (forward ? prev : name) === "login" ? "#4a2a14" : css.getPropertyValue("--paper-edge"); // 표지 안쪽 / 종이 뒷면
+    const tabBacks = copies.map((c) => ({
+      x: c.offsetLeft,
+      y: c.offsetTop + (c.classList.contains("active") ? -6 : parseFloat(c.style.getPropertyValue("--drop"))),
+      w: c.offsetWidth,
+      color: c.style.backgroundColor,
+    }));
+
+    /** e = 0(펼쳐진 상태) ~ 1(다 넘어감). 좌표는 페이지 왼쪽 위가 (0,0) */
+    const draw = (e) => {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 귀퉁이 C=(W,H) 가 P 로 끌려간다. n = C − P, 접힌 선 = C·P 의 수직이등분선
+      const nx = 2 * W * e;
+      const ny = lift * Math.sin(Math.PI * e);
+      const len = Math.hypot(nx, ny);
+      if (len < 1) return void (moving.style.clipPath = "");
+      const [ux, uy] = [nx / len, ny / len];
+      const [mx, my] = [W - nx / 2, H - ny / 2];
+      const d = len / 2; // 접힌 선 ~ 귀퉁이 거리
+
+      // 넘어가는 페이지: 접힌 선의 책등 쪽만 남긴다
+      const xAt = (y) => mx - ((y - my) * uy) / ux;
+      moving.style.clipPath =
+        `polygon(-50px -100px, ${xAt(-100)}px -100px, ${xAt(H + 100)}px ${H + 100}px, -50px ${H + 100}px)`;
+
+      canvas.style.opacity = Math.min(1, (1 - e) / 0.2); // 책등 너머로 넘어가면 사라짐
+      ctx.translate(W, top);
+      const clipFar = () => { // 접힌 선의 바깥쪽(귀퉁이 쪽) 반평면
+        const B = 1e4;
+        ctx.beginPath();
+        ctx.moveTo(mx - uy * B, my + ux * B);
+        ctx.lineTo(mx + uy * B, my - ux * B);
+        ctx.lineTo(mx + uy * B + ux * B, my - ux * B + uy * B);
+        ctx.lineTo(mx - uy * B + ux * B, my + ux * B + uy * B);
+        ctx.clip();
+      };
+      const shade = (dist, stops) => {
+        const g = ctx.createLinearGradient(mx, my, mx + ux * dist, my + uy * dist);
+        stops.forEach(([at, color]) => g.addColorStop(at, color));
+        return g;
+      };
+
+      // 드러난 밑 페이지에 지는 그림자
+      ctx.save();
+      clipFar();
+      ctx.fillStyle = shade(Math.min(d * 0.6, 200), [[0, "rgba(0,0,0,.3)"], [1, "rgba(0,0,0,0)"]]);
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+
+      // 뒷면: 잘린 부분을 접힌 선에 대칭
+      ctx.save();
+      const k = mx * ux + my * uy;
+      ctx.transform(1 - 2 * ux * ux, -2 * ux * uy, -2 * ux * uy, 1 - 2 * uy * uy, 2 * k * ux, 2 * k * uy);
+      clipFar();
+      ctx.shadowColor = "rgba(0,0,0,.4)";
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = back;
+      ctx.fillRect(0, 0, W, H);
+      ctx.shadowColor = "transparent";
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H);
+      for (const t of tabBacks) {
+        ctx.fillStyle = t.color;
+        ctx.fillRect(t.x, t.y, t.w, -t.y);
+        ctx.rect(t.x, t.y, t.w, -t.y);
+      }
+      // 휜 종이 명암: 접힌 곳 그늘 → 밝은 띠 → 평평 → 끝자락 살짝 그늘
+      ctx.fillStyle = shade(d, [
+        [0, "rgba(0,0,0,.28)"], [0.1, "rgba(255,255,255,.4)"], [0.4, "rgba(255,255,255,0)"], [1, "rgba(0,0,0,.14)"],
+      ]);
+      ctx.fill();
+      ctx.restore();
+    };
+
+    let raf;
+    const run = (dur, fn, next) => {
+      const t0 = performance.now();
+      const step = (now) => {
+        const t = dur ? Math.min(Math.max(now - t0, 0) / dur, 1) : 1;
+        fn(t);
+        if (t < 1) raf = requestAnimationFrame(step);
+        else next();
+      };
+      raf = requestAnimationFrame(step);
+    };
+    const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - (2 - 2 * t) ** 2 / 2);
+    let sinking = [];
+
+    this.finish = () => {
+      this.finish = null;
+      cancelAnimationFrame(raf);
+      sinking.forEach((s) => s.cancel());
+      canvas.remove();
       oldPage.remove();
-      page.classList.remove("returning");
       copies.forEach((c) => c.remove());
+      page.classList.remove("returning");
+      page.style.clipPath = "";
       tabs.forEach((tab) => (tab.style.visibility = ""));
+      document.querySelectorAll("[data-tab]").forEach((el) => el.classList.toggle("active", el.dataset.tab === name));
+    };
+
+    if (forward) {
+      tabs.forEach((tab) => (tab.style.visibility = "hidden")); // 넘어가는 동안엔 복사본만 보이게
+      run(this.DUR, (t) => draw(ease(t)), () => {
+        this.finish();
+        // 넘어간 페이지들의 책갈피가 페이지 뒤에서 제자리로 올라온다
+        tabs.forEach((tab) => tab.animate([{ transform: "translateY(70px)" }, {}], { duration: 350, easing: "ease-out" }));
+      });
+      return;
+    }
+
+    // 앞페이지로 ①: 새 페이지는 아직 안 보이고(e=1), 꺼내올 페이지들의 책갈피가 이전 모양에서 밑으로 가라앉는다
+    draw(1);
+    tabOf(name)?.classList.remove("active");
+    tabOf(prev)?.classList.add("active"); // 덮일 때까지는 이전 페이지 책갈피가 앞에 있음
+    sinking = tabs.map((tab) =>
+      tab.animate(
+        [{ transform: `translateY(${this.drop(this.ORDER.indexOf(tab.dataset.tab), from)}px)` }, { transform: "translateY(70px)" }],
+        { duration: this.SINK, easing: "ease-in", fill: "forwards" }
+      )
+    );
+    run(tabs.length ? this.SINK : 0, () => {}, () => {
+      // ②: 책갈피를 단 채로 책등 쪽에서 되말려 나온다
+      tabOf(name)?.classList.add("active");
+      tabs.forEach((tab) => (tab.style.visibility = "hidden"));
+      run(this.DUR, (t) => draw(1 - ease(t)), () => this.finish());
     });
-    page.after(oldPage);
+
   },
 
   /**
@@ -125,6 +274,7 @@ const PageTurn = {
       height: front ? "" : `${tab.offsetHeight - drop}px`,
       background: getComputedStyle(tab).backgroundColor,
       visibility: "",
+      whiteSpace: "nowrap", // 너비를 정수 px 로 고정하면서 글자가 두 줄로 밀리지 않게
       zIndex: "1",
     });
     return copy;

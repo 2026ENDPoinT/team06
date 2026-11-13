@@ -1,4 +1,4 @@
-/* 공통 스타일: 책(노트) 레이아웃, 인덱스 탭, 리본, 카드, 버튼 */
+/* 공통 스타일: 책(노트) 레이아웃, 인덱스 탭, 설정 책갈피, 카드, 버튼 */
 :root {
   --desk: #2b3a52;        /* 책상(천) */
   --cover: #1c2f4d;       /* 책 표지 */
@@ -29,7 +29,7 @@ body {
     radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.08), transparent 60%),
     repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 2px, transparent 2px 6px),
     var(--desk);
-  padding: 76px 24px 40px;
+  padding: 76px 64px 40px; /* 좌우 64px: 오른쪽 옆으로 나온 설정 책갈피 자리 */
 }
 
 :focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
@@ -62,7 +62,7 @@ body {
   height: 96px;
   display: flex;
   align-items: flex-end;
-  padding: 0 120px 14px 0;
+  padding: 0 0 14px 0;
   border-bottom: 2px solid var(--ink);
   margin-right: 40px;
 }
@@ -116,86 +116,52 @@ body {
 
 /* 로그인 화면: 노트 종이는 숨기고 가죽 표지만 보이게 */
 /* .cover = 넘어가는 중인 표지 복사본 (로그인 직후엔 body.locked 가 이미 풀려 있음) */
-body.locked .page, .page.cover { background: none; box-shadow: none; padding: 0; display: grid; } /* 표지가 페이지 크기만큼 늘어나도록 */
-body.locked .page-head, .cover .page-head,
-body.locked .tabs,
-body.locked .ribbon, .cover .ribbon { display: none; }
-body.locked .container, .cover .container { padding: 0; display: grid; }
+/* #page 로 한정: 로그아웃할 때 밑에 깔리는 이전 페이지 복사본(.under, id 없음)은 종이 모양 그대로 */
+body.locked #page, .page.cover { background: none; box-shadow: none; padding: 0; display: grid; } /* 표지가 페이지 크기만큼 늘어나도록 */
+body.locked #page .page-head, .cover .page-head,
+body.locked .tabs { display: none; }
+body.locked #page .container, .cover .container { padding: 0; display: grid; }
 
 /* ── 페이지 넘김 ─────────────────────────── */
-.book { perspective: 2400px; }
-.page.turning {
+/* 넘기는 연출(2D 페이지 컬)은 js/ui/pageTurn.js 가 clip-path + 캔버스(.page-flap)로 그린다. 여기는 겹치는 순서만 */
+.book { isolation: isolate; } /* 책갈피 z-index:-1 이 책 안에서만 통하도록 */
+.page.turning, .page.under {
   position: absolute;
   inset: 0 0 auto 0;
-  z-index: 3;
-  transform-origin: left center; /* 책등 */
-  backface-visibility: hidden;
-  pointer-events: none;
-  animation: page-turn .7s ease-in forwards;
-}
-.page.cover.turning { animation-duration: 1s; }
-/* 앞페이지로 갈 때: 지금 페이지는 밑에 깔리고, 넘어가 있던 페이지가 되돌아와 덮는다 */
-.page.under {
-  position: absolute;
-  inset: 0 0 auto 0;
-  z-index: 0;
   pointer-events: none;
 }
-.page.returning {
-  z-index: 2;
-  transform-origin: left center;
-  backface-visibility: hidden;
-  animation: page-turn .7s ease-in reverse;
-}
-body.locked .page.returning { animation-duration: 1s; } /* 로그아웃: 표지가 덮임 */
-@keyframes page-turn {
-  to { transform: rotateY(-180deg); }
-}
-/*
- * 넘어가는 페이지의 뒷면: 90° 를 넘기면 앞면 대신 뒷면이 보여서 끝(180°)까지 넘김이 이어진다.
- * (filter 는 3D 를 납작하게 만들어서 못 씀 → 어두워지는 연출은 뒷면 그늘로 대신)
- */
-.page.turning, .page.returning { transform-style: preserve-3d; }
-.page.turning > :not(.tab), .page.returning > :not(.tab) { backface-visibility: hidden; } /* 책갈피는 뒷면도 보임 */
-.page.turning::after, .page.returning::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(270deg, rgba(0,0,0,.25), transparent 35%), var(--paper-edge); /* 책등 쪽 그늘 */
-  transform: rotateY(180deg);
-  backface-visibility: hidden;
-}
-/* 표지의 안쪽 면 */
-.page.cover.turning::after,
-body.locked .page.returning::after { background: linear-gradient(270deg, rgba(0,0,0,.35), transparent 35%), #4a2a14; }
-@media (prefers-reduced-motion: reduce) {
-  .page.turning, .page.returning { animation-duration: 1ms; }
-}
+.page.turning { z-index: 3; }   /* 뒷페이지로: 이전 페이지 복사본이 위에서 말려 넘어감 */
+.page.under { z-index: 0; }     /* 앞페이지로: 이전 페이지 복사본은 밑에 깔리고 */
+.page.returning { z-index: 2; } /*            새 페이지가 되말려 나와 덮는다 */
+.page-flap { position: absolute; z-index: 4; pointer-events: none; } /* 접힌 종이 뒷면 + 그림자 */
 
-/* ── 설정 리본 ───────────────────────────── */
-.ribbon {
+/* ── 설정 책갈피 (책 오른쪽 옆에 꽂힌 빨간 책갈피) ── */
+/*
+ * 인덱스 탭을 옆으로 눕힌 모양. 설정은 맨 뒷페이지라 평소엔 종이 더미 뒤(z-index:-1)에 박혀 끝만 나와 있고,
+ * 설정 페이지에서는 페이지 앞으로 나와 6px 더 튀어나오며 안쪽 끝이 종이 위로 12px 드러난다.
+ */
+.bookmark {
   position: absolute;
-  top: -8px;
-  right: 56px;
-  width: 64px;
-  height: 168px;
+  top: 132px;
+  left: 100%;
+  z-index: -1;
+  width: 62px;
+  height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 9px;
   background: var(--pen);
   color: #fff;
-  display: flex;
-  justify-content: center;
-  padding-top: 72px;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.1);
-  z-index: 2;
-  transform-origin: top;
-  transform: perspective(600px) rotateX(0);
-  transition: height .2s, transform .5s ease-out, padding-top .5s;
+  border-radius: 0 8px 8px 0;
+  border: 1px solid rgba(0,0,0,.15);
+  border-left: none;
+  transform: translateX(-10px);
+  transition: transform .25s;
 }
-.ribbon:hover { height: 184px; }
-/* 설정 페이지: 리본이 위로 젖혀져 페이지 위쪽으로 펼쳐짐 (위 여백 76px 안에 들어오는 길이) */
-.ribbon.active { height: 64px; padding-top: 12px; transform: perspective(600px) rotateX(180deg); }
-.ribbon.active svg { transform: scaleY(-1); } /* 젖혀져도 아이콘은 똑바로 */
+.bookmark:hover { transform: translateX(-4px); }
+.bookmark.active { z-index: 1; width: 70px; transform: translateX(-12px); }
+body.locked .bookmark { display: none; }
 
 /* ── 레이아웃 ─────────────────────────── */
 .container {
@@ -251,14 +217,14 @@ th { color: var(--muted); font-weight: 400; }
 }
 
 @media (max-width: 760px) {
-  body { padding: 52px 8px 24px; }
+  body { padding: 52px 34px 24px 8px; }
   .page { padding: 0 0 32px 20px; background-position: -48px 0, 0 0, 0 0; }
-  .page-head { margin-right: 16px; padding-right: 72px; }
+  .page-head { margin-right: 16px; }
   .container { padding-right: 16px; }
   .tabs { left: 12px; }
   .tab { min-width: 0; padding: 8px 12px 0; font-size: 14px; }
-  .ribbon { right: 16px; width: 48px; height: 120px; padding-top: 48px; }
-  .ribbon:hover { height: 132px; }
-  .ribbon.active { height: 56px; padding-top: 8px; }
+  .bookmark { top: 104px; width: 46px; height: 64px; padding-right: 4px; }
+  .bookmark.active { width: 54px; }
+  .bookmark svg { width: 16px; height: 16px; }
   .grid-2 { grid-template-columns: 1fr; }
 }
