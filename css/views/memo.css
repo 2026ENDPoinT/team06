@@ -1,0 +1,87 @@
+/* 메모: 왼쪽 과목 목록 + 오른쪽 줄노트 편집기 */
+.memo-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.memo-list {
+  list-style: none;
+  margin: 0;
+  padding: 10px 6px 10px 10px;
+  height: 864px; /* 27줄 */
+  overflow-y: auto;
+}
+.memo-group {
+  color: var(--muted);
+  font-size: 14px;
+  padding: 12px 10px 4px;
+}
+.memo-group:first-child { padding-top: 4px; }
+.memo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 12px;
+  font-family: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+}
+.memo-item:hover { background: #f3f1e6; }
+.memo-item.active { background: #fbf1d6; border-left-color: var(--pen); }
+.memo-item-name { font-size: 15px; font-weight: 700; }
+.memo-item-preview {
+  font-size: 13px;
+  color: var(--ink);
+  opacity: .8;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.memo-item-preview.none { color: var(--muted); }
+
+.memo-editor { display: grid; gap: 12px; padding: 24px 30px; }
+.memo-editor h2 { margin: 0; font-size: 20px; }
+.memo-editor h2 .muted { font-size: 14px; font-weight: 400; margin-left: 8px; }
+
+.memo-text {
+  --memo-line: 32px;
+  width: 100%;
+  min-height: calc(var(--memo-line) * 20);
+  resize: vertical;
+  padding: 0 12px;
+  font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-size: 15px;
+  line-height: var(--memo-line);
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  /* 글줄과 함께 스크롤되는 노트 줄 */
+  background:
+    repeating-linear-gradient(transparent 0 calc(var(--memo-line) - 1px), var(--rule) calc(var(--memo-line) - 1px) var(--memo-line))
+    local,
+    var(--paper);
+}
+.memo-text:focus { outline: none; }
+.memo-text::placeholder { color: #8a90a0; }
+
+.memo-count {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.memo-count .error { color: var(--pen); }
+
+@media (max-width: 760px) {
+  .memo-layout { grid-template-columns: 1fr; gap: 16px; }
+  .memo-list { height: 256px; }
+  .memo-editor { padding: 16px; }
+}
