@@ -63,8 +63,8 @@ const StatsView = {
     return `
       <div class="bar-scroll"><div class="bar-inner" style="min-width:${items.length * 56}px">
       <div class="chart-box">
-        ${items.map((it) => `
-          <div class="bar-col">
+        ${items.map((it, i) => `
+          <div class="bar-col" style="--i:${i}">
             <span class="bar-value">${it.text}</span>
             <div class="bar ${variant}" style="height:${(it.value / max) * 85}%"></div>
           </div>`).join("")}

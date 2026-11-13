@@ -139,6 +139,13 @@ const PageTurn = {
     canvas.height = H + top + 60;
     canvas.style.left = `${page.offsetLeft - W}px`;
     canvas.style.top = `${page.offsetTop - top}px`;
+    // 캔버스가 페이지 아래로 삐져나와 넘기는 동안만 스크롤바가 생기면 화면 폭이 줄어 노트가 옆으로 밀린다
+    // → 원래 스크롤이 없던 화면이면 넘기는 동안 스크롤을 막아 둔다
+    const root = document.documentElement;
+    const lockScroll = root.scrollHeight <= root.clientHeight && root.scrollWidth <= root.clientWidth;
+    if (lockScroll) root.style.overflow = "hidden";
+    // 그래프 등장 애니메이션 등은 넘김이 끝난 뒤 시작 (css/base.css .page.inking)
+    page.classList.add("inking");
     page.parentElement.append(canvas);
     const ctx = canvas.getContext("2d");
 
@@ -258,7 +265,8 @@ const PageTurn = {
       canvas.remove();
       oldPage.remove();
       copies.forEach((c) => c.remove());
-      page.classList.remove("returning");
+      page.classList.remove("returning", "inking");
+      if (lockScroll) root.style.overflow = "";
       page.style.clipPath = "";
       inked.forEach(({ el }) => (el.style.maskImage = el.style.webkitMaskImage = ""));
       tabs.forEach((tab) => (tab.style.visibility = ""));

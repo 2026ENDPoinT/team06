@@ -265,6 +265,19 @@ const DashboardView = {
     const ticks = [0.5, 1.5, 2.5, 3.5, 4.5];
     const valid = points.filter((p) => p.gpa != null);
 
+    // 선이 왼쪽부터 그려지는 애니메이션용: 각 점까지 누적 길이 → 점이 나타나는 시점
+    const DRAW = 0.8, START = 0.1; // 초 (css/views/dashboard.css 의 draw-line 과 맞춤)
+    const coords = points.map((p, i) => (p.gpa == null ? null : [x(i), y(p.gpa)]));
+    const reach = [];
+    let len = 0, last = null;
+    coords.forEach((c, i) => {
+      if (!c) return;
+      if (last) len += Math.hypot(c[0] - last[0], c[1] - last[1]);
+      reach[i] = len;
+      last = c;
+    });
+    const delay = (i) => `${(START + (len ? (reach[i] / len) * DRAW : 0)).toFixed(2)}s`;
+
     return `
       <svg class="line-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="학기별 평점 그래프">
         ${ticks.map((t) => `
@@ -272,10 +285,10 @@ const DashboardView = {
           <text class="tick" x="${L - 10}" y="${y(t) + 5}" text-anchor="end">${t}</text>`).join("")}
         <line class="axis" x1="${L}" x2="${L}" y1="${T - 8}" y2="${H - B}" />
         <line class="axis" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" />
-        <polyline class="trend" points="${points.map((p, i) => p.gpa == null ? "" : `${x(i)},${y(p.gpa)}`).join(" ")}" />
+        <polyline class="trend" style="--len:${Math.ceil(len) + 1}" points="${coords.filter(Boolean).map((c) => c.join(",")).join(" ")}" />
         ${points.map((p, i) => `
-          ${p.gpa == null ? "" : `<circle class="dot" cx="${x(i)}" cy="${y(p.gpa)}" r="4.5"><title>${p.label}: ${p.gpa.toFixed(2)}</title></circle>
-          <text class="dot-value" x="${x(i)}" y="${y(p.gpa) > H - B - 24 ? y(p.gpa) - 10 : y(p.gpa) + 19}" text-anchor="middle">${p.gpa.toFixed(2)}</text>`}
+          ${p.gpa == null ? "" : `<circle class="dot" style="--d:${delay(i)}" cx="${x(i)}" cy="${y(p.gpa)}" r="4.5"><title>${p.label}: ${p.gpa.toFixed(2)}</title></circle>
+          <text class="dot-value" style="--d:${delay(i)}" x="${x(i)}" y="${y(p.gpa) > H - B - 24 ? y(p.gpa) - 10 : y(p.gpa) + 19}" text-anchor="middle">${p.gpa.toFixed(2)}</text>`}
           <text class="xlabel" x="${x(i)}" y="${H - 12}" text-anchor="middle">${UI.escape(p.label)}</text>`).join("")}
         ${valid.length ? "" : `<text class="tick" x="${W / 2}" y="${H / 2}" text-anchor="middle">기록된 평점이 없어요</text>`}
       </svg>`;
