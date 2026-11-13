@@ -8,7 +8,6 @@
  *  (등록된 과목 없이 GPA 조회 → GPA.calcGPA 가 null 반환, 화면에서 처리)
  */
 const Validator = {
-  SEMESTERS: ["1", "summer", "2", "winter"],
   NAME_MAX_LENGTH: 50,
   CREDITS_MAX: 30,
   YEAR_MIN: 1900,
@@ -44,7 +43,7 @@ const Validator = {
     }
 
     // 학기
-    if (!this.SEMESTERS.includes(String(semester))) {
+    if (!GPA.SEMESTERS.includes(String(semester))) {
       errors.push("학기를 올바르게 선택해 주세요.");
     }
 

@@ -7,14 +7,6 @@
 const StatsView = {
   el: () => document.getElementById("view-stats"),
 
-  /** 그래프 아래 짧은 학기 라벨용 */
-  SHORT_SEMESTER: { "1": "1", "summer": "여름", "2": "2", "winter": "겨울" },
-
-  /** (2026, "summer") → "26-여름" */
-  shortLabel(year, semester) {
-    return `${String(year).slice(-2)}-${this.SHORT_SEMESTER[semester] ?? semester}`;
-  },
-
   render() {
     const courses = CourseService.getAll();
     const header = UI.pageHeader("성적 분석", "학기별 추이와 성적 분포를 그래프로 확인합니다.");
@@ -22,12 +14,12 @@ const StatsView = {
     if (courses.length === 0) {
       this.el().innerHTML = `
         ${header}
-        <div class="card"><p class="empty">등록된 과목이 없습니다. 학기별 과목 탭에서 과목을 추가해 주세요.</p></div>`;
+        <div class="card"><p class="empty">등록된 과목이 없습니다. 과목·성적 탭에서 과목을 추가해 주세요.</p></div>`;
       return;
     }
 
     const semesters = GPA.summarizeBySemester(courses).map((s) => ({
-      label: UI.escape(this.shortLabel(s.courses[0].year, s.courses[0].semester)),
+      label: UI.escape(UI.shortSemester(s.courses[0].year, s.courses[0].semester)),
       gpa: s.gpa,
       credits: s.credits,
     }));

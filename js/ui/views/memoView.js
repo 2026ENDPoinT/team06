@@ -7,7 +7,7 @@
  * 입력할 때마다 바로 저장하므로 따로 저장 버튼이 없다.
  */
 const MemoView = {
-  MAX: 5000,
+  MAX: Backup.MEMO_MAX,
   selectedId: null,
 
   el: () => document.getElementById("view-memo"),

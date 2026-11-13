@@ -9,26 +9,74 @@ const DashboardView = {
 
   // 기본 닉네임 (app.js 가 Google 계정 이름 또는 "게스트"로 정함)
   NICKNAME: "닉네임",
-  NICKNAME_MAX: 20,
+  NICKNAME_MAX: Backup.NICKNAME_MAX,
 
-  /** 목표 평점은 계정(또는 게스트)별로 이 브라우저에 저장 */
-  targetKey() {
-    return `team06.targetGpa.${CourseService.uid || "guest"}`;
+  /**
+   * 닉네임·지난 나로부터의 메세지·졸업 학점·목표 평점은 계정(또는 게스트)별로 이 브라우저에 저장한다.
+   * 키: "team06.<이름>.<uid|guest>"
+   */
+  storageKey(name) {
+    return `team06.${name}.${CourseService.uid || "guest"}`;
   },
 
-  savedTarget() {
+  /** 저장된 값 (없거나 저장소를 못 쓰면 null) */
+  readStored(name) {
     try {
-      return localStorage.getItem(this.targetKey()) ?? "";
+      return localStorage.getItem(this.storageKey(name));
     } catch {
-      return "";
+      return null;
     }
   },
 
+  /** 빈 값이면 지운다. 저장 실패 시 예외 */
+  writeStored(name, value) {
+    if (value) localStorage.setItem(this.storageKey(name), value);
+    else localStorage.removeItem(this.storageKey(name));
+  },
+
+  /** 졸업 학점 (설정 탭에서 변경). 기본값 GPA.GRADUATION_CREDITS */
+  graduationCredits() {
+    const n = Number(this.readStored("graduationCredits"));
+    return GPA.isGraduationCredits(n) ? n : GPA.GRADUATION_CREDITS;
+  },
+
+  /** 직접 정한 졸업 학점만 (기본값을 쓰는 중이면 null) — JSON 백업용 */
+  customGraduationCredits() {
+    const n = this.graduationCredits();
+    return n === GPA.GRADUATION_CREDITS ? null : n;
+  },
+
+  /** 시뮬레이터에 적어 둔 목표 평점 (비었거나 올바르지 않으면 null) — JSON 백업용 */
+  targetGpa() {
+    return GPA.parseTarget(this.savedTarget());
+  },
+
+  /** 빈 값이면 기본값으로 되돌린다. @returns {number|null} 저장된 값, 범위를 벗어나거나 저장 실패면 null */
+  saveGraduationCredits(value) {
+    const text = String(value ?? "").trim();
+    const n = text ? Number(text) : GPA.GRADUATION_CREDITS;
+    if (!GPA.isGraduationCredits(n)) return null;
+    try {
+      this.writeStored("graduationCredits", n === GPA.GRADUATION_CREDITS ? "" : String(n));
+      return n;
+    } catch {
+      return null;
+    }
+  },
+
+  /** 시뮬레이터 입력칸에 적어 둔 그대로의 문자열 */
+  savedTarget() {
+    return this.readStored("targetGpa") ?? "";
+  },
+
+  /** @returns {boolean} 저장 성공 여부 (입력 중 저장 실패는 무시해도 계산은 그대로) */
   saveTarget(value) {
     try {
-      if (value) localStorage.setItem(this.targetKey(), value);
-      else localStorage.removeItem(this.targetKey());
-    } catch { /* 저장 실패해도 계산은 그대로 */ }
+      this.writeStored("targetGpa", value);
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   /** 평균 평점에 해당하는 등급 (그 평점 이상인 가장 낮은 등급) */
@@ -40,13 +88,14 @@ const DashboardView = {
   /** 목표 GPA 시뮬레이터 결과 문구 (HTML) */
   targetResultHtml(raw) {
     const text = String(raw ?? "").trim();
-    if (!text) return `<p class="muted">목표 평점을 입력하면 졸업(${GPA.GRADUATION_CREDITS}학점)까지 받아야 할 평균 평점을 알려드려요.</p>`;
-    const target = Number(text);
-    if (!Number.isFinite(target) || target < 0 || target > 4.5) {
+    const graduation = this.graduationCredits();
+    if (!text) return `<p class="muted">목표 평점을 입력하면 졸업(${graduation}학점)까지 받아야 할 평균 평점을 알려드려요.</p>`;
+    const target = GPA.parseTarget(text);
+    if (target == null) {
       return `<p class="error">목표 평점은 0.00 ~ 4.50 사이로 입력해 주세요.</p>`;
     }
 
-    const r = GPA.simulateTarget(CourseService.getAll(), target);
+    const r = GPA.simulateTarget(CourseService.getAll(), target, graduation);
     const fmt = (n) => n.toFixed(2);
 
     let body;
@@ -92,18 +141,9 @@ const DashboardView = {
     });
   },
 
-  /** 설정에서 바꾼 닉네임은 계정(또는 게스트)별로 이 브라우저에 저장 */
-  nicknameKey() {
-    return `team06.nickname.${CourseService.uid || "guest"}`;
-  },
-
-  /** 화면에 쓸 닉네임: 직접 정한 이름이 있으면 그것, 없으면 기본 닉네임 */
+  /** 화면에 쓸 닉네임: 설정에서 직접 정한 이름이 있으면 그것, 없으면 기본 닉네임 */
   nickname() {
-    try {
-      return localStorage.getItem(this.nicknameKey())?.trim() || this.NICKNAME;
-    } catch {
-      return this.NICKNAME;
-    }
+    return this.readStored("nickname")?.trim() || this.NICKNAME;
   },
 
   /** 직접 정한 닉네임만 (기본값을 쓰는 중이면 null) — JSON 백업용 */
@@ -112,36 +152,48 @@ const DashboardView = {
     return name === this.NICKNAME ? null : name;
   },
 
-  /** 지난 나로부터의 메세지 (없으면 null) */
+  /**
+   * 지난 나로부터의 메세지 (없으면 null).
+   * "미래의 나에게 메세지 보내기" 팝업에서 저장 → "지난 나로부터의 메세지" 칸에 뜬다 (칸 자체는 읽기 전용)
+   */
   pastMessage() {
-    try {
-      return localStorage.getItem(this.PAST_MESSAGE_KEY) || null;
-    } catch {
-      return null;
-    }
+    this.migratePastMessage();
+    return this.readStored("pastMessage") || null;
   },
 
   /** 빈 값이면 메세지를 지운다. 저장 실패 시 예외 */
   savePastMessage(text) {
-    const value = String(text ?? "").trim();
-    if (value) localStorage.setItem(this.PAST_MESSAGE_KEY, value);
-    else localStorage.removeItem(this.PAST_MESSAGE_KEY);
+    this.writeStored("pastMessage", String(text ?? "").trim().slice(0, this.MESSAGE_MAX));
+  },
+
+  MESSAGE_MAX: Backup.MESSAGE_MAX,
+  /** 예전에는 계정 구분 없이 이 키 하나에 저장했다 */
+  LEGACY_PAST_MESSAGE_KEY: "team06.pastMessage",
+
+  /**
+   * 예전 메세지가 남아 있으면, 아직 메세지가 없는 지금 계정(또는 게스트)으로 한 번만 옮긴다.
+   * 로그인 확인 전(앱 시작 직후 높이 재기용 렌더 등)에는 계정이 정해지지 않았으므로 옮기지 않는다.
+   */
+  migratePastMessage() {
+    if (!FirebaseAuth.ready || CourseService.loading || Tabs.current() === "login") return;
+    try {
+      const legacy = localStorage.getItem(this.LEGACY_PAST_MESSAGE_KEY);
+      if (legacy == null) return;
+      if (!this.readStored("pastMessage")) this.writeStored("pastMessage", legacy);
+      localStorage.removeItem(this.LEGACY_PAST_MESSAGE_KEY);
+    } catch { /* 저장소를 못 쓰면 다음에 다시 시도 */ }
   },
 
   /** 빈 값이면 기본 닉네임으로 되돌린다. @returns {boolean} 저장 성공 여부 */
   saveNickname(name) {
     const value = String(name ?? "").trim().slice(0, this.NICKNAME_MAX);
     try {
-      if (value && value !== this.NICKNAME) localStorage.setItem(this.nicknameKey(), value);
-      else localStorage.removeItem(this.nicknameKey());
+      this.writeStored("nickname", value === this.NICKNAME ? "" : value);
       return true;
     } catch {
       return false;
     }
   },
-
-  // "미래의 나에게 메세지 보내기" 팝업에서 저장 → "지난 나로부터의 메세지" 칸에 뜬다 (칸 자체는 읽기 전용)
-  PAST_MESSAGE_KEY: "team06.pastMessage",
 
   GRADE_COLORS: {
     "A+": "#1d2b4a", "A0": "#3f5a8a", "B+": "#9cc3b4", "B0": "#5f9c86",
@@ -158,13 +210,6 @@ const DashboardView = {
     return "지금부터가 진짜예요. 한 학기씩 다시 쌓아가요.";
   },
 
-  /** "2026-1" → "26-1", "2026-summer" → "26-여름" */
-  shortLabel(semesterKey) {
-    const [year, sem] = semesterKey.split("-");
-    const s = { "1": "1", "2": "2", summer: "여름", winter: "겨울" }[sem] ?? sem;
-    return `${year.slice(2)}-${s}`;
-  },
-
   render() {
     const courses = CourseService.getAll();
     const totalGpa = GPA.calcGPA(courses);
@@ -173,7 +218,7 @@ const DashboardView = {
 
     const points = semesters
       .filter((s) => !/-(summer|winter)$/.test(s.semesterKey)) // 계절학기는 그래프에서 제외
-      .map((s) => ({ label: this.shortLabel(s.semesterKey), gpa: s.gpa }));
+      .map((s) => ({ label: UI.shortSemester(...s.semesterKey.split("-")), gpa: s.gpa }));
 
     const grades = GPA.gradeDistribution(courses);
     const pastMessage = this.pastMessage();
@@ -232,7 +277,7 @@ const DashboardView = {
       <dialog class="future-dialog" aria-labelledby="future-title">
         <form method="dialog">
           <h2 id="future-title">미래의 나에게</h2>
-          <textarea name="message" rows="6" maxlength="300" required
+          <textarea name="message" rows="6" maxlength="${this.MESSAGE_MAX}" required
                     placeholder="다음 학기의 나에게 하고 싶은 말을 적어 주세요.">${UI.escape(pastMessage ?? "")}</textarea>
           <div class="future-actions">
             <button class="btn" value="cancel" formnovalidate>취소</button>
@@ -288,7 +333,7 @@ const DashboardView = {
         <polyline class="trend" style="--len:${Math.ceil(len) + 1}" points="${coords.filter(Boolean).map((c) => c.join(",")).join(" ")}" />
         ${points.map((p, i) => `
           ${p.gpa == null ? "" : `<circle class="dot" style="--d:${delay(i)}" cx="${x(i)}" cy="${y(p.gpa)}" r="4.5"><title>${p.label}: ${p.gpa.toFixed(2)}</title></circle>
-          <text class="dot-value" style="--d:${delay(i)}" x="${x(i)}" y="${y(p.gpa) > H - B - 24 ? y(p.gpa) - 10 : y(p.gpa) + 19}" text-anchor="middle">${p.gpa.toFixed(2)}</text>`}
+          <text class="dot-value" style="--d:${delay(i)}" x="${x(i)}" y="${y(p.gpa) > H - B - 30 ? y(p.gpa) - 11 : y(p.gpa) + 25}" text-anchor="middle">${p.gpa.toFixed(2)}</text>`}
           <text class="xlabel" x="${x(i)}" y="${H - 12}" text-anchor="middle">${UI.escape(p.label)}</text>`).join("")}
         ${valid.length ? "" : `<text class="tick" x="${W / 2}" y="${H / 2}" text-anchor="middle">기록된 평점이 없어요</text>`}
       </svg>`;

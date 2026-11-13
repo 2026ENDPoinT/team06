@@ -25,6 +25,19 @@ const SettingsView = {
 
       <div class="card settings-row">
         <div>
+          <h2>졸업 학점</h2>
+          <p class="muted">메인 화면의 목표 GPA 시뮬레이터가 이 학점을 기준으로 계산해요. 비워 두고 저장하면 기본값(${GPA.GRADUATION_CREDITS}학점)으로 돌아가요.</p>
+          <p class="muted" data-grad-status role="status" aria-live="polite"></p>
+        </div>
+        <form class="settings-control" data-grad-form>
+          <input type="number" name="graduation" min="${GPA.GRADUATION_MIN}" max="${GPA.GRADUATION_MAX}" step="1"
+                 inputmode="numeric" aria-label="졸업 학점" value="${DashboardView.graduationCredits()}" placeholder="${GPA.GRADUATION_CREDITS}" />
+          <button class="btn" type="submit">저장</button>
+        </form>
+      </div>
+
+      <div class="card settings-row">
+        <div>
           <h2>데이터 초기화</h2>
           <p class="muted">등록한 과목과 성적을 모두 지워요. 되돌릴 수 없어요.</p>
         </div>
@@ -36,7 +49,7 @@ const SettingsView = {
       <div class="card settings-row">
         <div>
           <h2>데이터 내보내기</h2>
-          <p class="muted">JSON은 백업·복원용(닉네임·지난 나로부터의 메세지·과목/성적·메모 모두 포함), Excel XML은 엑셀에서 열어 보는 과목 표예요.</p>
+          <p class="muted">JSON은 백업·복원용(닉네임·지난 나로부터의 메세지·과목/성적·메모·졸업 학점·목표 평점 모두 포함), Excel XML은 엑셀에서 열어 보는 과목 표예요.</p>
         </div>
         <div class="settings-control">
           <button class="btn" data-action="export-json">JSON 저장</button>
@@ -47,7 +60,7 @@ const SettingsView = {
       <div class="card settings-row">
         <div>
           <h2>데이터 불러오기</h2>
-          <p class="muted">JSON 백업 파일로 닉네임·메세지·과목/성적·메모를 모두 교체해요. 필요한 기록은 먼저 내보내세요.</p>
+          <p class="muted">JSON 백업 파일로 닉네임·메세지·과목/성적·메모·졸업 학점·목표 평점을 모두 교체해요. 필요한 기록은 먼저 내보내세요.</p>
         </div>
         <div class="settings-control">
           <button class="btn" data-action="import">JSON 불러오기</button>
@@ -81,6 +94,21 @@ const SettingsView = {
     });
     this.bindDataEvents();
     this.bindNickname();
+    this.bindGraduation();
+  },
+
+  bindGraduation() {
+    const form = this.el().querySelector("[data-grad-form]");
+    const status = this.el().querySelector("[data-grad-status]");
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const saved = DashboardView.saveGraduationCredits(form.graduation.value);
+      if (saved != null) form.graduation.value = saved;
+      status.textContent = saved != null
+        ? `졸업 학점을 ${saved}학점으로 저장했어요.`
+        : `졸업 학점은 ${GPA.GRADUATION_MIN}~${GPA.GRADUATION_MAX} 사이의 정수로 입력해 주세요.`;
+      status.classList.toggle("error", saved == null);
+    });
   },
 
   bindNickname() {
@@ -117,20 +145,29 @@ const SettingsView = {
       pastMessage: DashboardView.pastMessage(),
       courses: CourseService.getAll(),
       memos: MemoView.loadMemos(),
+      graduationCredits: DashboardView.customGraduationCredits(),
+      targetGpa: DashboardView.targetGpa(),
     });
   },
 
-  /** 과목 저장이 끝난 뒤 닉네임·메세지·메모를 이 브라우저에 저장. 실패하면 예외 */
-  applyBackupExtras({ nickname, pastMessage, memos }) {
+  /**
+   * 과목 저장이 끝난 뒤 닉네임·메세지·메모·졸업 학점·목표 평점을 이 브라우저에 저장. 실패하면 예외
+   * 졸업 학점·목표 평점이 undefined(그 칸이 없는 예전 백업)면 지금 값을 그대로 둔다.
+   */
+  applyBackupExtras({ nickname, pastMessage, memos, graduationCredits, targetGpa }) {
     try {
       if (!DashboardView.saveNickname(nickname ?? "")) throw new Error();
       DashboardView.savePastMessage(pastMessage);
       MemoView.replaceMemos(memos);
+      if (graduationCredits !== undefined && DashboardView.saveGraduationCredits(graduationCredits ?? "") == null) throw new Error();
+      if (targetGpa !== undefined && !DashboardView.saveTarget(targetGpa == null ? "" : String(targetGpa))) throw new Error();
     } catch {
-      throw new Error("과목은 불러왔지만 닉네임·메세지·메모를 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
+      throw new Error("과목은 불러왔지만 닉네임·메세지·메모·졸업 학점·목표 평점을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
     }
     const input = this.el().querySelector("[data-nick-form] [name=nickname]");
     if (input) input.value = DashboardView.nickname();
+    const grad = this.el().querySelector("[data-grad-form] [name=graduation]");
+    if (grad) grad.value = DashboardView.graduationCredits();
   },
 
   download(content, extension, type) {
@@ -195,18 +232,18 @@ const SettingsView = {
         const text = await file.text();
         if (generation !== CourseService.generation) return;
         const backup = Backup.parse(text); // 저장하기 전에 파일 전체를 검증
-        const what = backup.legacy ? "과목 전체를" : "닉네임·메세지·과목/성적·메모를 모두";
+        const what = backup.legacy ? "과목 전체를" : "닉네임·메세지·과목/성적·메모·졸업 학점·목표 평점을 모두";
         if (!confirm(`JSON 파일의 내용으로 현재 ${what} 교체할까요? 기존 기록은 먼저 백업하는 것을 권장합니다.`)) return;
         this.showStatus("불러와 저장하는 중입니다…");
         const count = await CourseService.importCourses(backup.courses);
         if (generation !== CourseService.generation) return;
         this.resetCourseView();
         if (backup.legacy) {
-          this.showStatus(`${count}개 과목을 불러와 저장했습니다. (예전 형식 파일이라 닉네임·메세지·메모는 그대로 둡니다)`);
+          this.showStatus(`${count}개 과목을 불러와 저장했습니다. (예전 형식 파일이라 닉네임·메세지·메모·졸업 학점·목표 평점은 그대로 둡니다)`);
           return;
         }
         this.applyBackupExtras(backup);
-        this.showStatus(`${count}개 과목과 메모 ${Object.keys(backup.memos).length}개, 닉네임·메세지를 불러와 저장했습니다.`);
+        this.showStatus(`${count}개 과목과 메모 ${Object.keys(backup.memos).length}개, 닉네임·메세지·졸업 학점·목표 평점을 불러와 저장했습니다.`);
       } catch (error) {
         if (generation === CourseService.generation) this.showStatus(error.message || "파일을 불러오지 못했습니다.", true);
       } finally {

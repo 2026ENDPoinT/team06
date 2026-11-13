@@ -14,9 +14,14 @@ const DataStore = {
       && /^[A-Za-z0-9_-]+$/.test(course.id)
       && typeof course.name === "string" && course.name.trim().length > 0
       && Number.isInteger(course.year)
-      && ["1", "summer", "2", "winter"].includes(course.semester)
+      && GPA.SEMESTERS.includes(course.semester)
       && Number.isFinite(course.credits) && course.credits > 0
       && GPA.isValidGrade(course.grade);
+  },
+
+  /** 저장할 필드만 남긴 복사본 (화면 계산용으로 붙은 값 등은 버린다) */
+  pick({ id, name, year, semester, credits, grade }) {
+    return { id, name, year, semester, credits, grade };
   },
 
   /**
@@ -95,10 +100,7 @@ const DataStore = {
     if (!deleted.length && !changed.length) return;
     const batch = sdk.writeBatch(db);
     for (const course of deleted) batch.delete(sdk.doc(collection, course.id));
-    for (const course of changed) {
-      const { id, name, year, semester, credits, grade } = course;
-      batch.set(sdk.doc(collection, id), { id, name, year, semester, credits, grade });
-    }
+    for (const course of changed) batch.set(sdk.doc(collection, course.id), this.pick(course));
     await batch.commit();
   },
 
