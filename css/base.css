@@ -13,9 +13,11 @@
   --tab-1: #e7c873;
   --tab-2: #9cc3b4;
   --tab-3: #e8a598;
+  --tab-4: #b9b4e0;
   --hand: "Nanum Pen Script", cursive;
   --max: 1180px;
   --line-h: 32px;         /* 노트 줄 간격 */
+  --fit: 1;               /* 화면 맞춤 배율. js/ui/tabs.js 의 fit() 이 창 크기에 맞춰 정한다 */
 }
 
 * { box-sizing: border-box; }
@@ -24,12 +26,14 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: "Gowun Batang", "Noto Serif KR", serif;
+  font-size: 18px;
   color: var(--ink);
   background:
     radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.08), transparent 60%),
     repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 2px, transparent 2px 6px),
     var(--desk);
-  padding: 76px 64px 40px; /* 좌우 64px: 오른쪽 옆으로 나온 설정 책갈피 자리 */
+  /* 좌우 64px: 오른쪽 옆으로 나온 설정 책갈피 자리. 노트와 같은 배율로 늘고 준다 (숫자를 바꾸면 tabs.js 의 FIT_W / FIT_PAD 도) */
+  padding: calc(88px * var(--fit)) calc(64px * var(--fit)) calc(40px * var(--fit));
 }
 
 :focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
@@ -37,6 +41,7 @@ body {
 /* ── 책 ─────────────────────────────────── */
 .book {
   position: relative;
+  zoom: var(--fit); /* 화면 맞춤: 노트 전체를 통째로 확대·축소 */
   max-width: var(--max);
   margin: 0 auto;
 }
@@ -69,13 +74,13 @@ body {
 .brand { display: flex; flex-direction: column; text-decoration: none; color: var(--ink); line-height: 1; }
 /* 팀 로고 그림: assets/logo.png(원본 회색) / assets/logo-cover.png(표지용 연한 갈색). 둘 다 선만 남긴 투명 배경 */
 .brand-mark { height: 52px; width: auto; align-self: center; margin-bottom: 4px; } /* 아래 글자(.brand-sub) 폭의 가운데 */
-.brand-sub { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: .5px; }
+.brand-sub { font-size: 13px; color: var(--muted); margin-top: 2px; letter-spacing: .5px; }
 
 /* ── 인덱스 탭 (책 위쪽에 꽂힌 책갈피) ── */
 /* z-index 를 주지 않음: 각 책갈피가 페이지 앞/뒤에 따로 놓여야 하므로 */
 .tabs {
   position: absolute;
-  top: -60px;
+  top: -72px; /* = .tab height */
   left: 260px;
   display: flex;
   gap: 6px;
@@ -85,18 +90,19 @@ body {
 .tabs .tab { pointer-events: auto; }
 /*
  * --drop (tabs.js 의 stackTabs 가 설정): 뒤 페이지일수록 커져서 아래로 내려가고 밑부분이 페이지 뒤에 박힌다.
- * 한 장당 하강치·최대치는 tabs.js 의 TAB_STEP / TAB_MAX
+ * 한 장당 하강치·최대치는 js/ui/pageTurn.js 의 TAB_STEP / TAB_MAX.
+ * 길이(height)를 바꾸면 .tabs 의 top, .tab.active 의 height(+18), TAB_MAX(길이 − 32)도 같이 바꿀 것
  */
 .tab {
   --drop: 10px;
   position: relative;
   z-index: -1; /* 페이지 뒤 */
   display: block;
-  height: 60px;
+  height: 72px;
   padding: 8px 22px 0;
   min-width: 108px;
   text-align: center;
-  font-size: 16px;
+  font-size: 18px;
   color: var(--ink);
   text-decoration: none;
   border-radius: 8px 8px 0 0;
@@ -108,12 +114,13 @@ body {
 .tab:nth-child(1) { background: var(--tab-1); }
 .tab:nth-child(2) { background: var(--tab-2); }
 .tab:nth-child(3) { background: var(--tab-3); }
+.tab:nth-child(4) { background: var(--tab-4); }
 .tab:hover { transform: translateY(calc(var(--drop) - 6px)); }
 /*
  * 지금 페이지 책갈피만 페이지 앞.
  * 다른 책갈피(최소 2px 하강)보다 6px 높이 솟고, 길이를 늘려 밑 끝은 종이 위로 12px 내려와 드러남
  */
-.tab.active { z-index: 1; transform: translateY(-6px); height: 78px; font-weight: 700; }
+.tab.active { z-index: 1; transform: translateY(-6px); height: 90px; font-weight: 700; }
 
 /* 로그인 화면: 노트 종이는 숨기고 가죽 표지만 보이게 */
 /* .cover = 넘어가는 중인 표지 복사본 (로그인 직후엔 body.locked 가 이미 풀려 있음) */
@@ -171,8 +178,8 @@ body.locked .bookmark { display: none; }
 .view { display: grid; gap: var(--line-h); }
 .view[hidden] { display: none; }
 
-.page-title { margin: 0; font-size: 26px; font-weight: 700; }
-.page-desc { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+.page-title { margin: 0; font-size: 28px; font-weight: 700; }
+.page-desc { margin: 4px 0 0; color: var(--muted); font-size: 17px; }
 
 /* 종이 위 칸: 그림자 대신 잉크 테두리 */
 .card {
@@ -181,7 +188,7 @@ body.locked .bookmark { display: none; }
   border-radius: 3px;
   padding: 18px 22px;
 }
-.card h2 { margin: 0 0 14px; font-size: 17px; font-weight: 700; }
+.card h2 { margin: 0 0 14px; font-size: 19px; font-weight: 700; }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 
@@ -193,12 +200,12 @@ body.locked .bookmark { display: none; }
   color: var(--ink);
   border-radius: 3px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
 }
 .btn:hover { background: #f0f2f6; }
 .btn.primary { background: var(--ink); color: var(--paper); }
 .btn.danger { color: var(--pen); border-color: var(--pen); }
-.btn.small { padding: 3px 9px; font-size: 12px; }
+.btn.small { padding: 3px 9px; font-size: 14px; }
 
 .muted { color: var(--muted); }
 .empty { color: var(--muted); text-align: center; padding: 32px 0; }
@@ -210,7 +217,7 @@ body.locked .bookmark { display: none; }
 }
 
 table { width: 100%; border-collapse: collapse; }
-th, td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; font-size: 15px; }
+th, td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; font-size: 17px; }
 th { color: var(--muted); font-weight: 400; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -218,12 +225,12 @@ th { color: var(--muted); font-weight: 400; }
 }
 
 @media (max-width: 760px) {
-  body { padding: 52px 34px 24px 8px; }
+  body { padding: 84px 34px 24px 8px; } /* 위 84px: 책갈피(72px + 6px)가 화면 밖으로 잘리지 않게 */
   .page { padding: 0 0 32px 20px; background-position: -48px 0, 0 0, 0 0; }
   .page-head { margin-right: 16px; }
   .container { padding-right: 16px; }
   .tabs { left: 12px; }
-  .tab { min-width: 0; padding: 8px 12px 0; font-size: 14px; }
+  .tab { min-width: 0; padding: 8px 12px 0; font-size: 16px; }
   .bookmark { top: 104px; width: 46px; height: 64px; padding-right: 4px; }
   .bookmark.active { width: 54px; }
   .bookmark svg { width: 16px; height: 16px; }

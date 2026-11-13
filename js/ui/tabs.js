@@ -1,7 +1,7 @@
 /**
  * [담당: 프론트엔드] 탭(책갈피) 전환
  *
- * 주소 끝의 #hash 로 현재 탭을 구분한다. (#login, #dashboard, #courses, #stats, #settings)
+ * 주소 끝의 #hash 로 현재 탭을 구분한다. (#login, #dashboard, #courses, #stats, #memo, #settings)
  * → 새로고침해도 보던 탭이 유지되고, 브라우저 뒤로가기도 동작한다.
  *
  * 새 탭 추가 방법:
@@ -19,6 +19,7 @@ const Tabs = {
     dashboard: DashboardView,
     courses: CoursesView,
     stats: StatsView,
+    memo: MemoView,
     settings: SettingsView,
   },
 
@@ -37,7 +38,10 @@ const Tabs = {
     const page = document.getElementById("page");
     const oldPage = PageTurn.capture(page, prev, name); // 페이지 넘김: js/ui/pageTurn.js
 
-    page.style.minHeight = `${this.mainHeight()}px`;
+    this.fit();                        // 노트가 제 너비로 펼쳐진 상태에서 메인 높이를 재고
+    this.mainH = this.mainHeight();
+    page.style.minHeight = `${this.mainH}px`;
+    this.fit(this.mainH);              // 그 높이까지 한 화면에 들어오도록 배율을 정한다
     for (const key of Object.keys(this.VIEWS)) {
       document.getElementById(`view-${key}`).hidden = key !== name;
     }
@@ -60,7 +64,8 @@ const Tabs = {
   },
 
   /** 모든 페이지가 최소한 메인 화면만큼은 길도록, 메인을 잠깐 그려서 높이를 잰다 */
-  // ponytail: 창 크기를 바꿀 때는 다시 재지 않음. 필요하면 resize 이벤트에서 show() 호출
+  // ponytail: 창 크기를 바꿀 때는 다시 재지 않고 배율만 다시 정함(fit). 모바일 폭(760px)을 넘나들면 높이가 어긋날 수 있음
+  //           → 거슬리면 resize 에서 show() 를 부르되, 입력 중이던 내용이 다시 그려지며 사라지는 것에 주의
   mainHeight() {
     const page = document.getElementById("page");
     page.style.minHeight = "";
@@ -72,8 +77,34 @@ const Tabs = {
     return page.offsetHeight;
   },
 
+  /**
+   * 화면 맞춤: 해상도(창 크기)가 달라도 노트 전체가 기본으로 한 화면에 보이게 배율(--fit)을 정한다.
+   *
+   *   가로 배율 = 창 너비 ÷ FIT_W            (노트 너비 + 좌우 여백)
+   *   세로 배율 = 창 높이 ÷ (height + FIT_PAD) (메인 페이지 높이 + 위아래 여백)
+   *   배율 = 둘 중 작은 쪽 → 가로·세로 어느 쪽도 넘치지 않는다. FIT_MIN ~ FIT_MAX 로 제한.
+   *
+   * - 기준은 메인 페이지 높이. 내용이 더 긴 페이지(과목이 많을 때 등)는 그만큼 세로 스크롤이 생긴다.
+   * - 배율은 css 의 .book { zoom } 과 body 여백에 쓰인다. (css/base.css)
+   * - 모바일 폭(760px 이하)은 전용 레이아웃이 있으므로 배율 1.
+   * - height 없이 부르면 가로 배율만 적용 (메인 높이를 재기 전 단계).
+   */
+  FIT_W: 1308,  // 노트 1180 + 좌우 여백 64 × 2
+  FIT_PAD: 142, // 위 여백 88 + 아래로 나온 표지 두께 14 + 아래 여백 40
+  FIT_MIN: 0.5, // 이보다 작아지면 글자를 읽기 어려움 → 더 줄이지 않고 스크롤
+  FIT_MAX: 2,
+
+  fit(height) {
+    const byWidth = innerWidth / this.FIT_W;
+    const byHeight = height ? innerHeight / (height + this.FIT_PAD) : Infinity;
+    const scale = innerWidth <= 760 ? 1 : Math.min(Math.max(Math.min(byWidth, byHeight), this.FIT_MIN), this.FIT_MAX);
+    document.documentElement.style.setProperty("--fit", scale);
+    return scale;
+  },
+
   init() {
     window.addEventListener("hashchange", () => this.show());
+    window.addEventListener("resize", () => this.fit(this.mainH));
     this.show();
   },
 };

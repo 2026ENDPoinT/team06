@@ -29,12 +29,12 @@
   gap: 14px;
 }
 .kpi .label {
-  font-size: 15px;
+  font-size: 17px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--ink);
 }
 .kpi .value { font-size: 34px; font-weight: 700; margin-top: 12px; text-align: center; }
-.kpi .value small { font-size: 15px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+.kpi .value small { font-size: 17px; font-weight: 400; color: var(--muted); margin-left: 4px; }
 .kpi .slash { font-weight: 400; color: var(--muted); margin: 0 10px; }
 
 /* 그래프: 테두리 없이 종이에 직접 그린 느낌 */
@@ -42,21 +42,21 @@
 /* 원형 그래프 칸이 꺾은선 그래프와 같은 높이에서 끝나도록 */
 .charts .chart-area { display: flex; flex-direction: column; align-items: flex-start; }
 .charts .line-chart, .charts .pie-wrap { width: 100%; }
-.chart-title { margin: 0; font-size: 17px; }
+.chart-title { margin: 0; font-size: 19px; }
 .line-chart { width: 100%; height: auto; font-family: inherit; }
 .line-chart .grid { stroke: var(--line); stroke-dasharray: 3 4; }
 .line-chart .axis { stroke: var(--ink); stroke-width: 2; }
-.line-chart .tick, .line-chart .xlabel { fill: var(--muted); font-size: 14px; }
+.line-chart .tick, .line-chart .xlabel { fill: var(--muted); font-size: 15px; }
 .line-chart .xlabel { fill: var(--ink); }
 .line-chart .trend { fill: none; stroke: var(--pen); stroke-width: 2.5; stroke-linejoin: round; }
 .line-chart .dot { fill: var(--paper); stroke: var(--pen); stroke-width: 2.5; }
-.line-chart .dot-value { fill: var(--pen); font-size: 11px; }
+.line-chart .dot-value { fill: var(--pen); font-size: 12px; }
 
 
 /* 성적 등급 분포 원형 그래프 */
 .pie-wrap { margin: auto 0; display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 24px; align-items: center; }
 .pie { aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--ink); }
-.pie-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.pie-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 16px; }
 .pie-legend li { display: flex; align-items: center; gap: 8px; }
 .pie-legend i { width: 12px; height: 12px; border: 1px solid var(--ink); }
 .pie-legend span { margin-left: auto; color: var(--muted); }
@@ -140,9 +140,9 @@
   padding: 18px 26px 22px;
   background: var(--paper);
 }
-.total-box .label { font-size: 15px; }
+.total-box .label { font-size: 17px; }
 .total { font-size: 48px; font-weight: 700; text-align: center; line-height: 1.2; }
-.total small { font-size: 18px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.total small { font-size: 20px; font-weight: 400; color: var(--muted); margin-left: 6px; }
 .total-msg {
   margin: 8px 0 0;
   text-align: center;
@@ -174,7 +174,7 @@
   transform: rotate(45deg);
 }
 .advice-bubble .label { font-family: var(--hand); font-size: 30px; line-height: 1; }
-.advice-bubble p { margin: 10px 0 0; font-size: 14px; line-height: 1.7; }
+.advice-bubble p { margin: 10px 0 0; font-size: 16px; line-height: 1.7; }
 
 @media (max-width: 960px) {
   .dash-row { grid-template-columns: 1fr; }
