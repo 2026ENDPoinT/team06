@@ -1,0 +1,70 @@
+/* 탭 4: 메모 */
+#view-memo { grid-template-columns: minmax(0, 1fr); }
+.memo-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* 왼쪽: 학기별 과목 목록 */
+.memo-list { padding: 14px 12px; max-height: 640px; overflow-y: auto; }
+.memo-list ul { list-style: none; margin: 0 0 12px; padding: 0; }
+.memo-sem { font-size: 14px !important; color: var(--muted); margin: 4px 8px 6px !important; font-weight: 400 !important; }
+.memo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  color: var(--ink);
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 2px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.memo-item:hover { background: #f0f2f6; }
+.memo-item.active { background: #fbf3d8; border-left-color: var(--pen); }
+.memo-name { font-size: 15px; font-weight: 700; }
+.memo-preview {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 오른쪽: 줄 노트처럼 생긴 메모장 */
+.memo-sheet { display: grid; gap: 10px; }
+.memo-sheet-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.memo-sheet-head h2 { margin: 0; }
+.memo-sheet-head .muted { font-size: 13px; }
+.memo-text {
+  width: 100%;
+  min-height: 480px;
+  resize: vertical;
+  font-family: var(--hand);
+  font-size: 22px;
+  line-height: 32px;
+  color: var(--ink);
+  padding: 0 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(transparent 0 31px, var(--rule) 31px 32px),
+    var(--paper);
+  background-attachment: local; /* 스크롤해도 글자와 줄이 맞도록 */
+}
+.memo-text:focus { outline: none; border-color: var(--ink); }
+.memo-foot { display: flex; justify-content: space-between; font-size: 13px; }
+.memo-status { color: var(--muted); }
+.memo-status.error { color: var(--pen); }
+
+@media (max-width: 760px) {
+  .memo-layout { grid-template-columns: 1fr; }
+  .memo-list { max-height: 240px; }
+  .memo-text { min-height: 320px; }
+}

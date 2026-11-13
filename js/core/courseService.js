@@ -115,17 +115,11 @@ const CourseService = {
     return JSON.stringify(this.getAll(), null, 2);
   },
 
-  /** 파일 전체를 검증한 뒤 기존 목록을 교체한다. 일부만 가져오지 않는다. */
-  async importJSON(text) {
-    let courses;
-    try {
-      courses = JSON.parse(text.replace(/^\uFEFF/, ""));
-    } catch {
-      throw new Error("올바른 JSON 파일이 아닙니다.");
-    }
+  /** 불러올 과목 배열 전체를 검증해 저장할 모양으로 정리한다. 하나라도 잘못되면 에러 (일부만 가져오지 않음) */
+  validateImport(courses) {
     if (!Array.isArray(courses)) throw new Error("과목 배열 형식의 JSON 파일을 선택해 주세요.");
     const ids = new Set();
-    const imported = courses.map((course, index) => {
+    return courses.map((course, index) => {
       if (!DataStore.isCourse(course) || ids.has(course.id)) {
         throw new Error(`${index + 1}번째 과목 정보가 올바르지 않거나 ID가 중복됩니다.`);
       }
@@ -133,8 +127,11 @@ const CourseService = {
       const { id, name, year, semester, credits, grade } = course;
       return { id, name, year, semester, credits, grade };
     });
-    await this.persist(imported, true);
-    return imported.length;
+  },
+
+  /** 검증된 과목 목록으로 기존 목록 전체를 교체한다 (백업 불러오기: js/core/backup.js) */
+  async replaceAll(courses) {
+    await this.persist(courses, true);
   },
 
   /** 같은 JSON 원본을 Excel에서 열 수 있는 SpreadsheetML(.xml) 표로 변환한다. */

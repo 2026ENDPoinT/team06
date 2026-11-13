@@ -13,6 +13,7 @@
   --tab-1: #e7c873;
   --tab-2: #9cc3b4;
   --tab-3: #e8a598;
+  --tab-4: #b7b4e0;
   --hand: "Nanum Pen Script", cursive;
   --max: 1180px;
   --line-h: 32px;         /* 노트 줄 간격 */
@@ -107,6 +108,7 @@ body {
 .tab:nth-child(1) { background: var(--tab-1); }
 .tab:nth-child(2) { background: var(--tab-2); }
 .tab:nth-child(3) { background: var(--tab-3); }
+.tab:nth-child(4) { background: var(--tab-4); }
 .tab:hover { transform: translateY(calc(var(--drop) - 6px)); }
 /*
  * 지금 페이지 책갈피만 페이지 앞.

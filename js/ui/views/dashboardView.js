@@ -6,11 +6,8 @@
 const DashboardView = {
   el: () => document.getElementById("view-dashboard"),
 
-  // TODO: 설정 화면에서 닉네임을 저장하게 되면 그 값으로 교체
-  NICKNAME: "닉네임",
-
+  // 닉네임·메세지는 Profile(js/core/profile.js)에 저장
   // "미래의 나에게 메세지 보내기" 팝업에서 저장 → "지난 나로부터의 메세지" 칸에 뜬다 (칸 자체는 읽기 전용)
-  PAST_MESSAGE_KEY: "team06.pastMessage",
 
   GRADE_COLORS: {
     "A+": "#1d2b4a", "A0": "#3f5a8a", "B+": "#9cc3b4", "B0": "#5f9c86",
@@ -45,10 +42,10 @@ const DashboardView = {
       .map((s) => ({ label: this.shortLabel(s.semesterKey), gpa: s.gpa }));
 
     const grades = GPA.gradeDistribution(courses);
-    const pastMessage = localStorage.getItem(this.PAST_MESSAGE_KEY);
+    const pastMessage = Profile.getPastMessage();
 
     this.el().innerHTML = `
-      <h1 class="greeting"><span class="nickname">${UI.escape(this.NICKNAME)}</span>님의 성적은 이래왔어요</h1>
+      <h1 class="greeting"><span class="nickname">${UI.escape(Profile.displayNickname())}</span>님의 성적은 이래왔어요</h1>
 
       <div class="dash-row">
         <div class="kpi-grid">
@@ -102,7 +99,7 @@ const DashboardView = {
       <dialog class="future-dialog" aria-labelledby="future-title">
         <form method="dialog">
           <h2 id="future-title">미래의 나에게</h2>
-          <textarea name="message" rows="6" maxlength="300" required
+          <textarea name="message" rows="6" maxlength="${Profile.MESSAGE_MAX}" required
                     placeholder="다음 학기의 나에게 하고 싶은 말을 적어 주세요.">${UI.escape(pastMessage ?? "")}</textarea>
           <div class="future-actions">
             <button class="btn" value="cancel" formnovalidate>취소</button>
@@ -116,7 +113,7 @@ const DashboardView = {
     this.el().querySelector(".send-future").addEventListener("click", () => dialog.showModal());
     dialog.querySelector("form").addEventListener("submit", (e) => {
       if (e.submitter?.value !== "ok") return; // 취소: 저장 없이 닫힘
-      localStorage.setItem(this.PAST_MESSAGE_KEY, dialog.querySelector("textarea").value.trim());
+      Profile.setPastMessage(dialog.querySelector("textarea").value);
       this.render();
     });
   },
