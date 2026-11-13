@@ -3,4 +3,8 @@
  */
 CourseService.init();
 Tabs.init();
-FirebaseAuth.init(() => Tabs.show());
+CourseService.onChange = () => Tabs.show();
+FirebaseAuth.init(() => {
+  SettingsView.resetCourseView();
+  CourseService.init(FirebaseAuth.user?.uid || null);
+});

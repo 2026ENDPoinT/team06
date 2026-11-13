@@ -22,6 +22,7 @@ const FirebaseAuth = {
         appId: "1:432350979180:web:a95a0ac29133b7bd606449",
         measurementId: "G-4GC444Q5T9",
       });
+      this.app = app;
       this.auth = authSDK.getAuth(app);
       this.auth.languageCode = "ko";
       await authSDK.setPersistence(this.auth, authSDK.browserSessionPersistence);
@@ -47,13 +48,17 @@ const FirebaseAuth = {
     provider.setCustomParameters({ prompt: "select_account" });
     return this.sdk.signInWithPopup(this.auth, provider);
   },
-  email(email, password, register = false) {
-    return register
-      ? this.sdk.createUserWithEmailAndPassword(this.auth, email, password)
-      : this.sdk.signInWithEmailAndPassword(this.auth, email, password);
-  },
   logout() {
     return this.sdk.signOut(this.auth);
+  },
+  async firestore() {
+    if (!this.app) throw new Error("Firebase 연결을 확인해 주세요.");
+    if (!this.firestorePromise) {
+      this.firestorePromise = import("https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js")
+        .then((sdk) => ({ sdk, db: sdk.getFirestore(this.app) }))
+        .catch((error) => { this.firestorePromise = null; throw error; });
+    }
+    return this.firestorePromise;
   },
   message(error) {
     const messages = {

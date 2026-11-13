@@ -7,10 +7,32 @@
 const CourseService = {
   /** @type {Course[]} */
   courses: [],
+  uid: null,
+  generation: 0,
+  loading: false,
+  saving: false,
+  loadError: null,
 
   /** 앱 시작 시 1회 호출 */
-  init() {
-    this.courses = DataStore.load();
+  async init(uid = null) {
+    const generation = ++this.generation;
+    this.uid = uid;
+    this.courses = [];
+    this.loading = true;
+    this.saving = false;
+    this.loadError = null;
+    this.onChange?.();
+    try {
+      const courses = uid ? await DataStore.loadCloud(uid) : DataStore.load();
+      if (generation === this.generation) this.courses = courses;
+    } catch (error) {
+      if (generation === this.generation) this.loadError = DataStore.errorMessage(error);
+    } finally {
+      if (generation === this.generation) {
+        this.loading = false;
+        this.onChange?.();
+      }
+    }
   },
 
   /** @returns {Course[]} */
@@ -32,8 +54,8 @@ const CourseService = {
    * @param {{ name: string, year: number, semester: string, credits: number, grade: string }} data
    * @returns {Course}
    */
-  add(data) {
-    const baseId = `c_${Date.now()}`;
+  async add(data) {
+    const baseId = `c_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
     let id = baseId;
     let suffix = 1;
     while (this.courses.some((course) => course.id === id)) {
@@ -48,7 +70,7 @@ const CourseService = {
       credits: data.credits,
       grade: data.grade,
     };
-    this.persist([...this.courses, course]);
+    await this.persist([...this.courses, course]);
     return { ...course };
   },
 
@@ -57,7 +79,7 @@ const CourseService = {
    * @param {Partial<Course>} data
    * @returns {Course|undefined} 대상이 없으면 undefined
    */
-  update(id, data) {
+  async update(id, data) {
     const index = this.courses.findIndex((course) => course.id === id);
     if (index === -1) return undefined;
 
@@ -67,7 +89,7 @@ const CourseService = {
     }
     const courses = [...this.courses];
     courses[index] = course;
-    this.persist(courses);
+    await this.persist(courses);
     return { ...course };
   },
 
@@ -75,25 +97,26 @@ const CourseService = {
    * @param {string} id
    * @returns {boolean} 삭제 여부
    */
-  remove(id) {
+  async remove(id) {
     const courses = this.courses.filter((course) => course.id !== id);
     if (courses.length === this.courses.length) return false;
-    this.persist(courses);
+    await this.persist(courses);
     return true;
   },
 
   /** 전체 초기화도 다른 변경과 마찬가지로 저장 성공 후 반영한다. */
-  clear() {
-    this.persist([]);
+  async clear() {
+    await this.persist([], true);
   },
 
   /** JSON 백업은 등록된 원본 성적을 그대로 보관한다. */
   exportJSON() {
+    this.assertReady();
     return JSON.stringify(this.getAll(), null, 2);
   },
 
   /** 파일 전체를 검증한 뒤 기존 목록을 교체한다. 일부만 가져오지 않는다. */
-  importJSON(text) {
+  async importJSON(text) {
     let courses;
     try {
       courses = JSON.parse(text.replace(/^\uFEFF/, ""));
@@ -110,7 +133,7 @@ const CourseService = {
       const { id, name, year, semester, credits, grade } = course;
       return { id, name, year, semester, credits, grade };
     });
-    this.persist(imported);
+    await this.persist(imported, true);
     return imported.length;
   },
 
@@ -136,10 +159,26 @@ ${rows}</Table></Worksheet></Workbook>`;
   },
 
   /** 저장에 성공한 경우에만 메모리의 목록을 변경한다. 실패하면 호출자에게 알린다. */
-  persist(courses) {
-    if (!DataStore.save(courses)) {
-      throw new Error("과목 데이터를 저장하지 못했습니다.");
+  assertReady() {
+    if (this.loading) throw new Error("과목 데이터를 불러오는 중입니다.");
+    if (this.loadError) throw new Error(this.loadError);
+    if (this.saving) throw new Error("저장 중입니다. 잠시 기다려 주세요.");
+  },
+
+  async persist(courses, replace = false) {
+    this.assertReady();
+    const generation = this.generation;
+    const uid = this.uid;
+    this.saving = true;
+    try {
+      if (uid) await DataStore.saveCloud(uid, courses, this.courses, replace);
+      else if (!DataStore.save(courses)) throw new Error("과목 데이터를 저장하지 못했습니다.");
+      if (generation !== this.generation) throw new Error("계정이 변경되었습니다. 현재 계정의 기록을 확인해 주세요.");
+      this.courses = courses;
+    } catch (error) {
+      throw new Error(DataStore.errorMessage(error));
+    } finally {
+      if (generation === this.generation) this.saving = false;
     }
-    this.courses = courses;
   },
 };
