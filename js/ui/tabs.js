@@ -66,23 +66,30 @@ const Tabs = {
    */
   stackTabs(name) {
     const cur = this.ORDER.indexOf(name);
-    const last = this.ORDER.length - 1;
     document.querySelectorAll(".tabs .tab").forEach((tab) => {
-      const i = this.ORDER.indexOf(tab.dataset.tab);
-      const depth = i >= cur ? i - cur : last - i;
-      tab.style.setProperty("--drop", `${Math.min(2 + depth * this.TAB_STEP, this.TAB_MAX)}px`);
+      tab.style.setProperty("--drop", `${this.drop(this.ORDER.indexOf(tab.dataset.tab), cur)}px`);
     });
+  },
+
+  /** 지금 페이지가 cur 번째일 때 i 번째 페이지 책갈피가 내려가는 px */
+  drop(i, cur) {
+    const depth = i >= cur ? i - cur : this.ORDER.length - 1 - i;
+    return Math.min(2 + depth * this.TAB_STEP, this.TAB_MAX);
   },
 
   /**
    * 책갈피 복사본을 페이지(또는 페이지 복사본) 안에 같은 자리로 붙인다.
-   * front: 지금 페이지 책갈피처럼 앞에 / 아니면 페이지 위로 드러난 부분만 (밑은 페이지 뒤에 박힌 모양)
+   * cur = 넘어가는 묶음의 맨 앞 페이지. 그 책갈피는 페이지 앞에,
+   * 나머지는 그 페이지 기준 깊이만큼 내려가 위로 드러난 부분만 (밑은 페이지 뒤에 박힌 모양)
    */
-  tabCopy(tab, page, front) {
+  tabCopy(tab, page, cur) {
     const tabs = tab.parentElement;
     const copy = tab.cloneNode(true);
+    const i = this.ORDER.indexOf(tab.dataset.tab);
+    const front = i === cur;
+    const drop = this.drop(i, cur);
     copy.classList.toggle("active", front);
-    const drop = parseFloat(tab.style.getPropertyValue("--drop")) || 0;
+    copy.style.setProperty("--drop", `${drop}px`);
     Object.assign(copy.style, {
       position: "absolute",
       left: `${tabs.offsetLeft + tab.offsetLeft - page.offsetLeft}px`,
@@ -98,9 +105,10 @@ const Tabs = {
 
   /**
    * 페이지 넘김 연출 (왼쪽 책등이 축)
-   *  - 뒷페이지로: 이전 페이지가 이전 탭 책갈피와 함께 넘어간다. 로그인 → 메인이면 표지가 열림
-   *  - 앞페이지로: 넘어가 있던 새 페이지가 뒤에서 되돌아와 덮는다.
-   *    새 탭 책갈피와 그보다 앞페이지들의 책갈피도 함께 돌아온다. 로그아웃이면 표지가 덮임
+   *  - 뒷페이지로: 이전 페이지가 넘어간다. 로그인 → 메인이면 표지가 열림
+   *  - 앞페이지로: 넘어가 있던 새 페이지가 뒤에서 되돌아와 덮는다. 로그아웃이면 표지가 덮임
+   * 두 페이지 사이의 페이지들(앞쪽 페이지 ~ 뒤쪽 페이지 직전)의 책갈피가 함께 넘어간다.
+   *  예) 메인 → 성적 분석: 메인·과목성적 / 성적 분석 → 메인: 메인·과목성적
    */
   turnPage(page, oldPage, prev, name) {
     const forward = this.ORDER.indexOf(name) > this.ORDER.indexOf(prev);
@@ -111,11 +119,12 @@ const Tabs = {
     if (!forward) page.classList.add("returning");
 
     const moving = forward ? oldPage : page;
-    const names = forward ? [prev] : this.ORDER.slice(0, this.ORDER.indexOf(name) + 1);
+    const [a, b] = [this.ORDER.indexOf(prev), this.ORDER.indexOf(name)].sort((x, y) => x - y);
+    const names = a < 0 ? [] : this.ORDER.slice(a, b); // 로그인 표지가 넘어갈 땐 책갈피 없음
     const tabs = names
       .map((n) => document.querySelector(`.tabs .tab[data-tab="${n}"]`))
       .filter(Boolean);
-    const copies = tabs.map((tab) => this.tabCopy(tab, page, tab.dataset.tab === (forward ? prev : name)));
+    const copies = tabs.map((tab) => this.tabCopy(tab, page, a));
     moving.append(...copies);
     tabs.forEach((tab) => (tab.style.visibility = "hidden")); // 넘어가는 동안엔 복사본만 보이게
 
