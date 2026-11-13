@@ -76,7 +76,7 @@
 }
 
 /* 미래의 나에게 메세지 보내기: 메세지 칸 왼쪽 밑에 매달린 역사다리꼴 손잡이 */
-.past-wrap { display: grid; justify-items: start; }
+.past-wrap { display: grid; justify-items: start; align-content: start; } /* 옆 칸이 길어져도 손잡이가 늘어나지 않게 */
 .past-wrap .past-message { position: relative; z-index: 1; justify-self: stretch; }
 .send-future {
   margin: -1px 0 0 18px;
@@ -149,9 +149,9 @@
   color: var(--pen);
 }
 
-/* 목표 평점 계산 자리: 사다리를 오르는 캐릭터 + 오른쪽 직사각형 말풍선 (내용은 아직 비어 있음) */
+/* 목표 GPA 시뮬레이터: 사다리를 오르는 캐릭터 + 오른쪽 직사각형 말풍선 */
 .goal { display: grid; align-self: stretch; grid-template-columns: 130px 1fr; gap: 16px; align-items: end; }
-.climber { width: 100%; color: var(--ink); }
+.climber { width: 100%; color: var(--ink); align-self: start; } /* 위에 고정: 말풍선이 길어져도 그림은 안 내려가고, 꼬리(top 64px)와 손 높이가 맞는다 */
 .goal-bubble {
   position: relative;
   border: 1.5px solid var(--ink);
@@ -172,6 +172,27 @@
   border-bottom: 1.5px solid var(--ink);
   transform: rotate(45deg);
 }
+
+/* 말풍선 안: 목표 GPA 시뮬레이터 */
+.goal-bubble .label { font-family: var(--hand); font-size: 30px; line-height: 1; }
+.goal-bubble p { margin: 10px 0 0; font-size: 18px; line-height: 1.7; }
+.goal-input { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 18px; }
+.goal-input input {
+  width: 110px;
+  padding: 4px 8px;
+  border: 0;
+  border-bottom: 1.5px solid var(--ink);
+  background: transparent;
+  color: var(--pen);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+}
+.goal-input input:focus { outline: 0; border-bottom-color: var(--pen); }
+.goal-bubble .goal-msg { font-family: var(--hand); font-size: 26px; line-height: 1.3; color: var(--pen); }
+.goal-need { font-size: 24px; color: var(--pen); }
+.goal-bubble .error { color: #c8322e; }
 
 @media (max-width: 960px) {
   .dash-row { grid-template-columns: 1fr; }
