@@ -133,9 +133,7 @@
 
 ---
 
-## 직접 실행하기 (개발자용)
-
-빌드 도구 없이 순수 HTML / CSS / JavaScript로 만들었어요.
+## 직접 실행하기
 
 - VS Code의 **Live Server** 같은 로컬 웹 서버로 `index.html`을 열어 주세요. (예: `http://localhost:5500`)
 - `index.html` 파일을 더블클릭해서 바로 열면 **게스트로만** 쓸 수 있어요. Google 로그인은 웹 서버 주소에서만 동작해요.
