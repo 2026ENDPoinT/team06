@@ -1,12 +1,21 @@
 /**
  * [담당: 프론트엔드] 탭 1 — 메인
- * 인사말, 주요 지표 3칸, 학기별 평점 그래프, 총 평점 + 한마디, AI 조언 자리
+ * 인사말, 주요 지표 3칸, 학기별 평점 그래프, 총 평점 + 한마디, AI 조언 자리,
+ * 성적 등급 분포(원형), 지난 나로부터의 메세지(읽기 전용)
  */
 const DashboardView = {
   el: () => document.getElementById("view-dashboard"),
 
   // TODO: 설정 화면에서 닉네임을 저장하게 되면 그 값으로 교체
   NICKNAME: "닉네임",
+
+  // TODO: 메세지를 작성하는 화면(설정 등)에서 이 키로 저장하면 메인에 그대로 뜬다. 메인에서는 읽기만 한다.
+  PAST_MESSAGE_KEY: "team06.pastMessage",
+
+  GRADE_COLORS: {
+    "A+": "#1d2b4a", "A0": "#3f5a8a", "B+": "#9cc3b4", "B0": "#5f9c86",
+    "C+": "#e7c873", "C0": "#c9a443", "D+": "#e8a598", "D0": "#d3746a", "F": "#c8322e",
+  },
 
   /** 총 평점에 따라 달라지는 한마디 */
   message(gpa) {
@@ -30,49 +39,61 @@ const DashboardView = {
     const totalGpa = GPA.calcGPA(courses);
     const semesters = GPA.summarizeBySemester(courses);
     const latest = semesters[semesters.length - 1];
-    const previous = semesters[semesters.length - 2];
 
     const points = semesters.map((s) => ({ label: this.shortLabel(s.semesterKey), gpa: s.gpa }));
+
+    const dist = GPA.gradeDistribution(courses);
+    const usingSampleDist = Object.values(dist).every((n) => !n);
+    const grades = usingSampleDist ? StatsView.SAMPLE.grades : dist;
+    const pastMessage = localStorage.getItem(this.PAST_MESSAGE_KEY);
 
     this.el().innerHTML = `
       <h1 class="greeting"><span class="nickname">${UI.escape(this.NICKNAME)}</span>님의 성적은 이래왔어요</h1>
 
-      <div class="kpi-grid">
-        <div class="card kpi">
-          <div class="label">이번 학기 이수학점 / 총 이수학점</div>
-          <div class="value">${latest?.credits ?? "-"}<span class="slash">/</span>${GPA.sumCredits(courses)}<small>학점</small></div>
+      <div class="dash-row">
+        <div class="kpi-grid">
+          <div class="card kpi">
+            <div class="label">이번 학기 이수학점 / 총 이수학점</div>
+            <div class="value">${latest?.credits ?? "-"}<span class="slash">/</span>${GPA.sumCredits(courses)}<small>학점</small></div>
+          </div>
+          <div class="card kpi">
+            <div class="label">수강 과목 수</div>
+            <div class="value">${courses.length}<small>과목</small></div>
+          </div>
         </div>
-        <div class="card kpi">
-          <div class="label">수강 과목 수</div>
-          <div class="value">${courses.length}<small>과목</small></div>
-        </div>
-        <div class="card kpi">
-          <div class="label">지난 학기 평점</div>
-          <div class="value">${UI.formatGPA(previous?.gpa)}<small>/ 4.5</small></div>
-          <div class="sub">${previous ? UI.semesterTitle(previous.courses[0].year, previous.courses[0].semester) : "지난 학기 기록 없음"}</div>
+
+        <div class="total-box">
+          <div class="label">총 평점 평균</div>
+          <div class="total">${UI.formatGPA(totalGpa)}<small>/ 4.5</small></div>
+          <p class="total-msg">“${this.message(totalGpa)}”</p>
         </div>
       </div>
 
-      <div class="dash-main">
+      <div class="dash-row charts">
         <div class="chart-area">
           <h2 class="chart-title">학기별 평점</h2>
           ${this.lineChart(points)}
         </div>
 
-        <div class="dash-side">
-          <div class="total-box">
-            <div class="label">총 평점 평균</div>
-            <div class="total">${UI.formatGPA(totalGpa)}<small>/ 4.5</small></div>
-            <p class="total-msg">“${this.message(totalGpa)}”</p>
-          </div>
+        <div class="chart-area">
+          <h2 class="chart-title">성적 등급 분포</h2>
+          ${usingSampleDist ? `<span class="placeholder-note">예시 그래프 · 기능 연결 후 실제 데이터로 바뀌어요</span>` : ""}
+          ${this.pieChart(grades)}
+        </div>
+      </div>
 
-          <div class="advisor">
-            ${this.robot()}
-            <div class="advice-bubble">
-              <div class="label">AI 조언</div>
-              <p class="muted">준비 중이에요. 등록한 성적을 바탕으로 다음 학기 조언을 들려줄 거예요.</p>
-            </div>
+      <div class="dash-row">
+        <div class="advisor">
+          ${this.robot()}
+          <div class="advice-bubble">
+            <div class="label">AI 조언</div>
+            <p class="muted">준비 중이에요. 등록한 성적을 바탕으로 다음 학기 조언을 들려줄 거예요.</p>
           </div>
+        </div>
+
+        <div class="past-message">
+          <div class="label">지난 나로부터의 메세지</div>
+          <p class="${pastMessage ? "" : "muted"}">${pastMessage ? UI.escape(pastMessage) : "아직 남겨둔 메세지가 없어요."}</p>
         </div>
       </div>
     `;
@@ -96,10 +117,33 @@ const DashboardView = {
         <line class="axis" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}" />
         <polyline class="trend" points="${points.map((p, i) => p.gpa == null ? "" : `${x(i)},${y(p.gpa)}`).join(" ")}" />
         ${points.map((p, i) => `
-          ${p.gpa == null ? "" : `<circle class="dot" cx="${x(i)}" cy="${y(p.gpa)}" r="4.5"><title>${p.label}: ${p.gpa.toFixed(2)}</title></circle>`}
+          ${p.gpa == null ? "" : `<circle class="dot" cx="${x(i)}" cy="${y(p.gpa)}" r="4.5"><title>${p.label}: ${p.gpa.toFixed(2)}</title></circle>
+          <text class="dot-value" x="${x(i)}" y="${y(p.gpa) > H - B - 24 ? y(p.gpa) - 10 : y(p.gpa) + 19}" text-anchor="middle">${p.gpa.toFixed(2)}</text>`}
           <text class="xlabel" x="${x(i)}" y="${H - 12}" text-anchor="middle">${UI.escape(p.label)}</text>`).join("")}
         ${valid.length ? "" : `<text class="tick" x="${W / 2}" y="${H / 2}" text-anchor="middle">기록된 평점이 없어요</text>`}
       </svg>`;
+  },
+
+  /** 등급 분포 원형 그래프 (CSS conic-gradient) */
+  pieChart(grades) {
+    const entries = Object.entries(grades).filter(([, n]) => n > 0);
+    const total = entries.reduce((sum, [, n]) => sum + n, 0);
+    if (!total) return `<p class="muted">기록된 성적이 없어요</p>`;
+    let acc = 0;
+    const stops = entries.map(([g, n]) => {
+      const from = (acc / total) * 100;
+      acc += n;
+      return `${this.GRADE_COLORS[g] ?? "#999"} ${from}% ${(acc / total) * 100}%`;
+    });
+    return `
+      <div class="pie-wrap">
+        <div class="pie" style="background: conic-gradient(${stops.join(", ")})" role="img"
+             aria-label="성적 등급 분포: ${entries.map(([g, n]) => `${g} ${n}과목`).join(", ")}"></div>
+        <ul class="pie-legend">
+          ${entries.map(([g, n]) => `
+            <li><i style="background:${this.GRADE_COLORS[g] ?? "#999"}"></i>${g}<span>${n}과목 · ${Math.round((n / total) * 100)}%</span></li>`).join("")}
+        </ul>
+      </div>`;
   },
 
   /** AI 조언 캐릭터 (임시 그림) */

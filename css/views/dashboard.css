@@ -16,10 +16,17 @@
   line-height: 1;
 }
 
+/* 화면을 좌우 절반으로 나누는 줄 */
+.dash-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
 .kpi-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 14px;
 }
 .kpi .label {
   font-size: 15px;
@@ -29,17 +36,12 @@
 .kpi .value { font-size: 34px; font-weight: 700; margin-top: 12px; text-align: center; }
 .kpi .value small { font-size: 15px; font-weight: 400; color: var(--muted); margin-left: 4px; }
 .kpi .slash { font-weight: 400; color: var(--muted); margin: 0 10px; }
-.kpi .sub { text-align: center; font-size: 13px; color: var(--muted); }
-
-.dash-main {
-  display: grid;
-  grid-template-columns: 1.15fr 1fr;
-  gap: 32px;
-  align-items: start;
-}
 
 /* 그래프: 테두리 없이 종이에 직접 그린 느낌 */
 .chart-area { display: grid; gap: 4px; }
+/* 원형 그래프 칸이 꺾은선 그래프와 같은 높이에서 끝나도록 */
+.charts .chart-area { display: flex; flex-direction: column; align-items: flex-start; }
+.charts .line-chart, .charts .pie-wrap { width: 100%; }
 .chart-title { margin: 0; font-size: 17px; }
 .line-chart { width: 100%; height: auto; font-family: inherit; }
 .line-chart .grid { stroke: var(--line); stroke-dasharray: 3 4; }
@@ -48,8 +50,32 @@
 .line-chart .xlabel { fill: var(--ink); }
 .line-chart .trend { fill: none; stroke: var(--pen); stroke-width: 2.5; stroke-linejoin: round; }
 .line-chart .dot { fill: var(--paper); stroke: var(--pen); stroke-width: 2.5; }
+.line-chart .dot-value { fill: var(--pen); font-size: 11px; }
 
-.dash-side { display: grid; gap: 28px; }
+
+/* 성적 등급 분포 원형 그래프 */
+.pie-wrap { margin: auto 0; display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 24px; align-items: center; }
+.pie { aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--ink); }
+.pie-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.pie-legend li { display: flex; align-items: center; gap: 8px; }
+.pie-legend i { width: 12px; height: 12px; border: 1px solid var(--ink); }
+.pie-legend span { margin-left: auto; color: var(--muted); }
+
+/* 지난 나로부터의 메세지 (읽기 전용) */
+.past-message {
+  border: 1.5px solid var(--ink);
+  background: var(--paper);
+  padding: 16px 20px 20px;
+  min-height: 180px;
+}
+.past-message .label { font-family: var(--hand); font-size: 30px; line-height: 1; }
+.past-message p {
+  margin: 12px 0 0;
+  font-family: var(--hand);
+  font-size: 26px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
 
 /* 총 평점: 손으로 그린 둥근 테두리 */
 .total-box {
@@ -69,14 +95,15 @@
   color: var(--pen);
 }
 
-.advisor { display: grid; grid-template-columns: 100px 1fr; gap: 16px; align-items: end; }
+.advisor { display: grid; align-self: stretch; grid-template-columns: 100px 1fr; gap: 16px; align-items: end; }
 .robot { width: 100%; color: var(--ink); }
 .advice-bubble {
   position: relative;
   border: 1.5px solid var(--ink);
   background: var(--paper);
   padding: 16px 18px;
-  min-height: 170px;
+  min-height: 180px;
+  height: 100%;
 }
 .advice-bubble::before { /* 말풍선 꼬리 */
   content: "";
@@ -94,10 +121,8 @@
 .advice-bubble p { margin: 10px 0 0; font-size: 14px; line-height: 1.7; }
 
 @media (max-width: 960px) {
-  .dash-main { grid-template-columns: 1fr; }
+  .dash-row { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
   .greeting { font-size: 34px; }
-  .kpi-grid { grid-template-columns: 1fr 1fr; }
-  .kpi-grid .kpi:first-child { grid-column: 1 / -1; }
 }
