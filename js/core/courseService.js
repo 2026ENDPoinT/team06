@@ -10,18 +10,12 @@ const CourseService = {
 
   /** 앱 시작 시 1회 호출 */
   init() {
-    // TODO: DataStore.load() 로 불러오기
-    // 화면 확인용 임시 데이터 — 구현 후 삭제
-    this.courses = [
-      { id: "demo-1", name: "자료구조", year: 2026, semester: "1", credits: 3, grade: "A+" },
-      { id: "demo-2", name: "이산수학", year: 2026, semester: "1", credits: 3, grade: "B0" },
-      { id: "demo-3", name: "프로그래밍기초", year: 2025, semester: "2", credits: 3, grade: "A0" },
-    ];
+    this.courses = DataStore.load();
   },
 
   /** @returns {Course[]} */
   getAll() {
-    return this.courses;
+    return this.courses.map((course) => ({ ...course }));
   },
 
   /**
@@ -29,8 +23,8 @@ const CourseService = {
    * @returns {Course|undefined}
    */
   getById(id) {
-    // TODO: 구현
-    return undefined;
+    const course = this.courses.find((course) => course.id === id);
+    return course ? { ...course } : undefined;
   },
 
   /**
@@ -39,22 +33,60 @@ const CourseService = {
    * @returns {Course}
    */
   add(data) {
-    // TODO: 구현
-    console.log("[TODO] CourseService.add", data);
+    const baseId = `c_${Date.now()}`;
+    let id = baseId;
+    let suffix = 1;
+    while (this.courses.some((course) => course.id === id)) {
+      id = `${baseId}_${suffix++}`;
+    }
+
+    const course = {
+      id,
+      name: data.name,
+      year: data.year,
+      semester: data.semester,
+      credits: data.credits,
+      grade: data.grade,
+    };
+    this.persist([...this.courses, course]);
+    return { ...course };
   },
 
   /**
    * @param {string} id
    * @param {Partial<Course>} data
+   * @returns {Course|undefined} 대상이 없으면 undefined
    */
   update(id, data) {
-    // TODO: 구현
-    console.log("[TODO] CourseService.update", id, data);
+    const index = this.courses.findIndex((course) => course.id === id);
+    if (index === -1) return undefined;
+
+    const course = { ...this.courses[index] };
+    for (const key of ["name", "year", "semester", "credits", "grade"]) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) course[key] = data[key];
+    }
+    const courses = [...this.courses];
+    courses[index] = course;
+    this.persist(courses);
+    return { ...course };
   },
 
-  /** @param {string} id */
+  /**
+   * @param {string} id
+   * @returns {boolean} 삭제 여부
+   */
   remove(id) {
-    // TODO: 구현
-    console.log("[TODO] CourseService.remove", id);
+    const courses = this.courses.filter((course) => course.id !== id);
+    if (courses.length === this.courses.length) return false;
+    this.persist(courses);
+    return true;
+  },
+
+  /** 저장에 성공한 경우에만 메모리의 목록을 변경한다. 실패하면 호출자에게 알린다. */
+  persist(courses) {
+    if (!DataStore.save(courses)) {
+      throw new Error("과목 데이터를 저장하지 못했습니다.");
+    }
+    this.courses = courses;
   },
 };

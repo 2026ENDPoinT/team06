@@ -13,15 +13,30 @@ const DataStore = {
    * @returns {Course[]}
    */
   load() {
-    // TODO: 구현
-    return [];
+    try {
+      const stored = localStorage.getItem(this.KEY);
+      if (stored === null) return [];
+
+      const courses = JSON.parse(stored);
+      return Array.isArray(courses) ? courses : [];
+    } catch {
+      return [];
+    }
   },
 
   /**
    * 과목 목록 전체를 저장한다.
    * @param {Course[]} courses
+   * @returns {boolean} 저장 성공 여부
    */
   save(courses) {
-    // TODO: 구현
+    if (!Array.isArray(courses)) return false;
+
+    try {
+      localStorage.setItem(this.KEY, JSON.stringify(courses));
+      return true;
+    } catch {
+      return false;
+    }
   },
 };
