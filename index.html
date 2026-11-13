@@ -17,7 +17,7 @@
 <body>
   <!--
     이 파일은 "뼈대"만 둔다. 각 탭의 실제 내용은 js/ui/views/*.js 가 그린다.
-    화면 컨셉: 책상 위에 펼쳐진 노트. 탭 = 책 위쪽에 꽂힌 인덱스 탭, 설정 = 오른쪽 리본 책갈피.
+    화면 컨셉: 책상 위에 펼쳐진 노트. 탭 = 책 위쪽에 꽂힌 인덱스 탭, 설정 = 책 오른쪽 옆에 꽂힌 빨간 책갈피.
   -->
   <div class="book">
     <!-- 인덱스 탭: 종이 위쪽 가장자리에 꽂혀 있음 -->
@@ -27,6 +27,13 @@
       <a class="tab" href="#stats" data-tab="stats">성적 분석</a>
     </nav>
 
+    <!-- 설정 책갈피: 책 오른쪽 옆에 꽂혀 있음 (맨 뒷페이지) -->
+    <a class="bookmark" href="#settings" data-tab="settings" aria-label="설정">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1L11 21h4l.4-2.7a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/>
+      </svg>
+    </a>
+
     <div class="page" id="page">
       <header class="page-head">
         <a class="brand" href="#dashboard">
@@ -34,13 +41,6 @@
           <span class="brand-sub">ENDPoinT Team 6</span>
         </a>
       </header>
-
-      <!-- 설정 리본 책갈피 -->
-      <a class="ribbon" href="#settings" data-tab="settings" aria-label="설정">
-        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-          <path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.6 7.6 0 0 0 1.7 1L11 21h4l.4-2.7a7.6 7.6 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/>
-        </svg>
-      </a>
 
       <main class="container">
         <section class="view" id="view-login" hidden></section>
