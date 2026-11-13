@@ -1,0 +1,26 @@
+/* 탭 1: 대시보드 */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.kpi .label { color: var(--muted); font-size: 14px; }
+.kpi .value { font-size: 32px; font-weight: 700; margin-top: 8px; }
+.kpi .value small { font-size: 15px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+.kpi.highlight { background: var(--primary); border-color: var(--primary); color: #fff; }
+.kpi.highlight .label,
+.kpi.highlight small { color: rgba(255, 255, 255, 0.8) !important; }
+
+.recent-list { list-style: none; margin: 0; padding: 0; }
+.recent-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.recent-list li:last-child { border-bottom: none; }
+
+@media (max-width: 720px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+}

@@ -1,0 +1,26 @@
+/* 탭 3: 성적 분석(시각화) */
+.chart-box {
+  height: 240px;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 8px 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+.bar {
+  width: 100%;
+  max-width: 48px;
+  background: var(--primary);
+  border-radius: 6px 6px 0 0;
+}
+.bar.soft { background: #9db8f7; }
+.bar-value { font-size: 12px; color: var(--muted); }
+.bar-labels { display: flex; gap: 16px; padding: 8px 8px 0; }
+.bar-labels span { flex: 1; text-align: center; font-size: 12px; color: var(--muted); }
+
+.legend-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; }
+.legend-row .track { flex: 1; height: 10px; background: var(--primary-soft); border-radius: 5px; overflow: hidden; }
+.legend-row .fill { height: 100%; background: var(--primary); }
+.legend-row .name { width: 32px; font-weight: 600; }
+.legend-row .count { width: 40px; text-align: right; color: var(--muted); }
