@@ -20,7 +20,7 @@
 }
 .memo-group {
   color: var(--muted);
-  font-size: 16px;
+  font-size: 18px;
   padding: 12px 10px 4px;
 }
 .memo-group:first-child { padding-top: 4px; }
@@ -45,9 +45,9 @@
 }
 .memo-item:hover { background: #f3f1e6; }
 .memo-item.active { background: #fbf1d6; border-left-color: var(--pen); }
-.memo-item-name { font-size: 17px; font-weight: 700; }
+.memo-item-name { font-size: 19px; font-weight: 700; }
 .memo-item-preview {
-  font-size: 15px;
+  font-size: 17px;
   color: var(--ink);
   opacity: .8;
   overflow: hidden;
@@ -63,8 +63,8 @@
   padding: 24px 30px;
   min-height: 0;
 }
-.memo-editor h2 { margin: 0; font-size: 22px; }
-.memo-editor h2 .muted { font-size: 16px; font-weight: 400; margin-left: 8px; }
+.memo-editor h2 { margin: 0; font-size: 24px; }
+.memo-editor h2 .muted { font-size: 18px; font-weight: 400; margin-left: 8px; }
 
 .memo-text {
   --memo-line: 32px;
@@ -74,7 +74,7 @@
   resize: none;
   padding: 0 12px;
   font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-  font-size: 17px;
+  font-size: 19px;
   line-height: var(--memo-line);
   color: var(--ink);
   border: 1.5px solid var(--ink);
@@ -92,7 +92,7 @@
   display: flex;
   justify-content: space-between;
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   color: var(--muted);
 }
 .memo-count .error { color: var(--pen); }
