@@ -11,6 +11,7 @@ const DataStore = {
   isCourse(course) {
     return course !== null && typeof course === "object"
       && typeof course.id === "string" && course.id.trim().length > 0
+      && /^[A-Za-z0-9_-]+$/.test(course.id)
       && typeof course.name === "string" && course.name.trim().length > 0
       && Number.isInteger(course.year)
       && ["1", "summer", "2", "winter"].includes(course.semester)
@@ -58,5 +59,52 @@ const DataStore = {
     } catch {
       return false;
     }
+  },
+
+  assertUser(uid) {
+    if (!uid || FirebaseAuth.user?.uid !== uid) throw new Error("계정이 변경되었습니다. 다시 시도해 주세요.");
+  },
+
+  async loadCloud(uid) {
+    this.assertUser(uid);
+    const { sdk, db } = await FirebaseAuth.firestore();
+    this.assertUser(uid);
+    const snapshot = await sdk.getDocsFromServer(sdk.collection(db, "users", uid, "courses"));
+    const courses = snapshot.docs.map((document) => ({ ...document.data(), id: document.id }));
+    if (!courses.every((course) => this.isCourse(course))) {
+      throw new Error("계정에 올바르지 않은 과목 정보가 있습니다. 데이터베이스를 확인해 주세요.");
+    }
+    return courses;
+  },
+
+  /** 일반 수정은 변경된 문서만 저장하고, 초기화·불러오기는 서버 목록 전체를 교체한다. */
+  async saveCloud(uid, courses, previous, replace = false) {
+    this.assertUser(uid);
+    if (!courses.every((course) => this.isCourse(course))) throw new Error("과목 데이터가 올바르지 않습니다.");
+    const { sdk, db } = await FirebaseAuth.firestore();
+    const collection = sdk.collection(db, "users", uid, "courses");
+    const old = replace
+      ? (await sdk.getDocsFromServer(collection)).docs.map((document) => ({ ...document.data(), id: document.id }))
+      : previous;
+    this.assertUser(uid);
+    const nextIds = new Set(courses.map((course) => course.id));
+    const oldMap = new Map(old.map((course) => [course.id, course]));
+    const deleted = old.filter((course) => !nextIds.has(course.id));
+    const changed = courses.filter((course) => replace || JSON.stringify(oldMap.get(course.id)) !== JSON.stringify(course));
+    if (deleted.length + changed.length > 500) throw new Error("한 번에 변경할 수 있는 과목은 500개까지입니다. 과목을 나누어 처리해 주세요.");
+    if (!deleted.length && !changed.length) return;
+    const batch = sdk.writeBatch(db);
+    for (const course of deleted) batch.delete(sdk.doc(collection, course.id));
+    for (const course of changed) {
+      const { id, name, year, semester, credits, grade } = course;
+      batch.set(sdk.doc(collection, id), { id, name, year, semester, credits, grade });
+    }
+    await batch.commit();
+  },
+
+  errorMessage(error) {
+    if (error.code === "permission-denied") return "계정 데이터에 접근할 수 없습니다. Firestore 보안 규칙을 확인해 주세요.";
+    if (error.code === "unavailable") return "서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.";
+    return error.message || "과목 데이터를 처리하지 못했습니다.";
   },
 };

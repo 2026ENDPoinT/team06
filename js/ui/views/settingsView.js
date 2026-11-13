@@ -8,6 +8,7 @@ const SettingsView = {
   render() {
     this.el().innerHTML = `
       ${UI.pageHeader("설정", "내 노트를 원하는 대로 바꿔요.")}
+      <p class="muted">${LoginView.isGuest() ? "게스트 기록은 현재 브라우저에 저장됩니다." : "과목과 성적은 현재 로그인한 계정에 저장됩니다."}</p>
 
       <div class="card settings-row">
         <div>
@@ -113,13 +114,17 @@ const SettingsView = {
     const fileInput = root.querySelector("[data-import]");
     for (const button of root.querySelectorAll("button[data-action]")) {
       if (button.dataset.action === "logout") continue;
-      button.addEventListener("click", () => {
-        if (this.importing) return;
+      button.addEventListener("click", async () => {
+        if (this.importing || CourseService.saving) return;
+        const generation = CourseService.generation;
         try {
           switch (button.dataset.action) {
             case "clear":
               if (!confirm("등록한 과목과 성적을 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.")) return;
-              CourseService.clear();
+              button.disabled = true;
+              this.showStatus("초기화하는 중입니다…");
+              await CourseService.clear();
+              if (generation !== CourseService.generation) return;
               this.resetCourseView();
               this.showStatus("과목과 성적을 모두 초기화했습니다.");
               break;
@@ -136,7 +141,9 @@ const SettingsView = {
               break;
           }
         } catch (error) {
-          this.showStatus(error.message || "데이터 처리에 실패했습니다.", true);
+          if (generation === CourseService.generation) this.showStatus(error.message || "데이터 처리에 실패했습니다.", true);
+        } finally {
+          button.disabled = false;
         }
       });
     }
@@ -145,14 +152,18 @@ const SettingsView = {
       const file = fileInput.files[0];
       if (!file || this.importing) return;
       this.importing = true;
+      const generation = CourseService.generation;
       try {
         const text = await file.text();
+        if (generation !== CourseService.generation) return;
         if (!confirm("JSON 파일의 과목으로 현재 과목 전체를 교체할까요? 기존 기록은 먼저 백업하는 것을 권장합니다.")) return;
-        const count = CourseService.importJSON(text);
+        this.showStatus("과목을 불러와 저장하는 중입니다…");
+        const count = await CourseService.importJSON(text);
+        if (generation !== CourseService.generation) return;
         this.resetCourseView();
         this.showStatus(`${count}개 과목을 불러와 저장했습니다.`);
       } catch (error) {
-        this.showStatus(error.message || "파일을 불러오지 못했습니다.", true);
+        if (generation === CourseService.generation) this.showStatus(error.message || "파일을 불러오지 못했습니다.", true);
       } finally {
         this.importing = false;
         fileInput.value = "";

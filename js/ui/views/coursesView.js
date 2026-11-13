@@ -62,6 +62,7 @@ const CoursesView = {
     `;
     this.bindEvents();
     this.setupTabScroll(prevScroll);
+    this.setSaving(CourseService.saving);
   },
 
   /** 학기가 많아 탭이 넘치면 탭 줄을 잡고 좌우로 드래그해서 넘긴다. 선택한 탭은 항상 보이게 */
@@ -168,6 +169,7 @@ const CoursesView = {
           </div>
         </form>
         <p class="error" id="form-error" hidden></p>
+        <p id="course-save-status" role="status" aria-live="polite"></p>
         ${this.notice ? `<p class="retake-notice">${UI.escape(this.notice)}</p>` : ""}
 
         ${rows.length === 0
@@ -205,6 +207,7 @@ const CoursesView = {
 
     root.addEventListener("submit", (e) => {
       e.preventDefault();
+      if (CourseService.saving || CourseService.loading || CourseService.loadError) return;
       const f = Object.fromEntries(new FormData(e.target).entries());
       this.notice = null;
 
@@ -226,17 +229,21 @@ const CoursesView = {
       if (allErrors.length) return this.showErrors(allErrors);
 
       const data = { ...input, year: Number(year), credits: Number(input.credits) };
-      if (this.editingId) CourseService.update(this.editingId, data);
-      else CourseService.add(data);
-      if (retake.previous && !this.editingId) this.notice = `'${input.name}' 과목을 재수강 하였습니다.`;
-
-      // 과목이 생긴 학기는 더 이상 '빈 학기'가 아님 → 과목을 다 지우면 탭도 바로 사라진다
-      this.emptySemesters.delete(this.selectedKey);
-      this.editingId = null;
-      this.render();
+      const editingId = this.editingId;
+      this.saveChange(
+        () => editingId ? CourseService.update(editingId, data) : CourseService.add(data),
+        () => {
+          if (retake.previous && !editingId) this.notice = `'${input.name}' 과목을 재수강 하였습니다.`;
+          // 저장에 성공한 뒤에만 입력 폼과 임시 학기 상태를 정리한다.
+          this.emptySemesters.delete(this.selectedKey);
+          this.editingId = null;
+          this.render();
+        }
+      );
     });
 
     root.addEventListener("click", (e) => {
+      if (CourseService.saving || CourseService.loading || CourseService.loadError) return;
       const btn = e.target.closest("button[data-action]");
       if (!btn) return;
       this.notice = null; // 다른 동작을 하면 재수강 안내는 지운다
@@ -261,8 +268,11 @@ const CoursesView = {
           break;
         case "delete":
           if (!confirm("이 과목을 삭제할까요?")) return;
-          CourseService.remove(id);
-          break;
+          this.saveChange(() => CourseService.remove(id), () => {
+            if (this.editingId === id) this.editingId = null;
+            this.render();
+          });
+          return;
         default:
           return;
       }
@@ -270,8 +280,33 @@ const CoursesView = {
     });
   },
 
+  setSaving(saving) {
+    const root = this.el();
+    root.setAttribute("aria-busy", String(saving));
+    for (const control of root.querySelectorAll("button, input, select")) control.disabled = saving;
+    const status = root.querySelector("#course-save-status");
+    if (status) status.textContent = saving ? "과목 데이터를 저장하는 중입니다…" : "";
+  },
+
+  async saveChange(action, onSuccess) {
+    const generation = CourseService.generation;
+    this.showErrors([]);
+    this.setSaving(true);
+    try {
+      await action();
+      if (generation !== CourseService.generation) return;
+      onSuccess();
+      if (Tabs.current() !== "courses") Tabs.show();
+    } catch (error) {
+      if (generation === CourseService.generation) this.showErrors([error.message || "저장에 실패했습니다. 다시 시도해 주세요."]);
+    } finally {
+      if (generation === CourseService.generation) this.setSaving(false);
+    }
+  },
+
   showErrors(errors) {
     const el = document.getElementById("form-error");
+    if (!el) return;
     el.hidden = errors.length === 0;
     el.textContent = errors.join(" / ");
   },

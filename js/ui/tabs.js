@@ -46,7 +46,15 @@ const Tabs = {
     });
     PageTurn.stackTabs(name);
     document.body.classList.toggle("locked", name === "login");
-    this.VIEWS[name].render();
+    if (name !== "login" && (CourseService.loading || CourseService.loadError)) {
+      const view = document.getElementById(`view-${name}`);
+      view.innerHTML = CourseService.loading
+        ? '<div class="card" role="status">과목 데이터를 불러오는 중입니다…</div>'
+        : `<div class="card"><p class="error" role="alert">${UI.escape(CourseService.loadError)}</p><button class="btn" data-retry>다시 불러오기</button></div>`;
+      view.querySelector("[data-retry]")?.addEventListener("click", () => CourseService.init(FirebaseAuth.user?.uid || null));
+    } else {
+      this.VIEWS[name].render();
+    }
     window.scrollTo(0, 0);
     PageTurn.turn(page, oldPage, prev, name);
   },
