@@ -30,6 +30,8 @@ const CoursesView = {
   },
 
   render() {
+    // 다시 그려도 탭 줄 스크롤 위치는 유지
+    const prevScroll = this.el().querySelector(".sem-tab-list")?.scrollLeft ?? 0;
     const courses = CourseService.getAll();
     const groups = {};
     for (const c of courses) (groups[`${c.year}-${c.semester}`] ??= []).push(c);
@@ -42,10 +44,12 @@ const CoursesView = {
       ${UI.pageHeader("과목·성적", "학기를 고르고 그 학기에 들은 과목을 등록해요.")}
 
       <div class="sem-book">
-        <div class="sem-tabs" role="tablist">
-          ${keys.map((k) => `
-            <button class="sem-tab ${k === this.selectedKey ? "active" : ""}" role="tab"
-                    aria-selected="${k === this.selectedKey}" data-action="select" data-key="${k}">${this.titleOf(k)}</button>`).join("")}
+        <div class="sem-tabs">
+          <div class="sem-tab-list" role="tablist">
+            ${keys.map((k) => `
+              <button class="sem-tab ${k === this.selectedKey ? "active" : ""}" role="tab"
+                      aria-selected="${k === this.selectedKey}" data-action="select" data-key="${k}">${this.titleOf(k)}</button>`).join("")}
+          </div>
           <button class="sem-add" data-action="${this.adding ? "close-add" : "open-add"}" aria-expanded="${this.adding}"
                   aria-label="학기 추가" title="학기 추가">+</button>
         </div>
@@ -57,6 +61,64 @@ const CoursesView = {
       </div>
     `;
     this.bindEvents();
+    this.setupTabScroll(prevScroll);
+  },
+
+  /** 학기가 많아 탭이 넘치면 탭 줄을 잡고 좌우로 드래그해서 넘긴다. 선택한 탭은 항상 보이게 */
+  setupTabScroll(prevScroll) {
+    const list = this.el().querySelector(".sem-tab-list");
+    if (!list) return;
+
+    list.scrollLeft = prevScroll;
+    const active = list.querySelector(".sem-tab.active");
+    if (active) {
+      const left = active.offsetLeft - list.offsetLeft;
+      if (left < list.scrollLeft) list.scrollLeft = left - 8;
+      else if (left + active.offsetWidth > list.scrollLeft + list.clientWidth)
+        list.scrollLeft = left + active.offsetWidth - list.clientWidth + 8;
+    }
+
+    // 드래그로 넘기기: 5px 넘게 움직였을 때만 드래그로 보고, 그때는 손을 뗄 때의 탭 클릭(선택)을 막는다
+    let startX = 0, startScroll = 0, dragging = false, pointerId = null;
+    list.addEventListener("pointerdown", (e) => {
+      dragging = false;
+      if (e.button !== 0 || list.scrollWidth <= list.clientWidth) return;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startScroll = list.scrollLeft;
+    });
+    list.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pointerId) return;
+      const dx = e.clientX - startX;
+      if (!dragging && Math.abs(dx) < 5) return;
+      if (!dragging) {
+        dragging = true;
+        list.setPointerCapture(pointerId); // 탭 줄 밖으로 나가도 계속 끌리게
+        list.classList.add("dragging");
+      }
+      list.scrollLeft = startScroll - dx;
+    });
+    const end = (e) => {
+      if (e.pointerId !== pointerId) return;
+      pointerId = null;
+      list.classList.remove("dragging");
+    };
+    list.addEventListener("pointerup", end);
+    list.addEventListener("pointercancel", end);
+    list.addEventListener("click", (e) => {
+      if (!dragging) return;
+      dragging = false;
+      e.stopPropagation(); // 끌기만 했으면 학기 선택으로 처리하지 않음
+      e.preventDefault();
+    }, true);
+    list.addEventListener("dragstart", (e) => e.preventDefault());
+
+    // 마우스 휠(세로)로도 탭 줄을 가로로 넘길 수 있게
+    list.addEventListener("wheel", (e) => {
+      if (list.scrollWidth <= list.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      list.scrollLeft += e.deltaY;
+    }, { passive: false });
   },
 
   /** + 버튼을 누르면 열리는 연도/학기 선택 칸 */
