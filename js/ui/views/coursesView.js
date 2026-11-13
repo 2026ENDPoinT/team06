@@ -76,7 +76,9 @@ const CoursesView = {
 
   /** 선택된 학기: 요약 + 과목 등록 폼 + 과목 목록 */
   semesterHtml(key, list) {
-    const s = GPA.summarizeBySemester(list).find((x) => x.semesterKey === key);
+    // 재수강 판단은 전체 과목 기준 → 이 학기 과목에도 retaken / effectiveGrade 가 붙어 있다
+    const s = GPA.summarizeBySemester(CourseService.getAll()).find((x) => x.semesterKey === key);
+    const rows = s?.courses ?? list;
     const c = this.editingId ? CourseService.getById(this.editingId) : null;
 
     return `
@@ -104,17 +106,18 @@ const CoursesView = {
           </div>
         </form>
         <p class="error" id="form-error" hidden></p>
+        ${this.notice ? `<p class="retake-notice">${UI.escape(this.notice)}</p>` : ""}
 
-        ${list.length === 0
+        ${rows.length === 0
           ? `<p class="empty">이 학기에 등록한 과목이 없어요. 위에서 과목을 추가하세요.</p>`
           : `<table>
               <thead><tr><th>과목명</th><th>학점</th><th>성적</th><th></th></tr></thead>
               <tbody>
-                ${list.map((c) => `
-                  <tr data-id="${c.id}">
+                ${rows.map((c) => `
+                  <tr data-id="${c.id}" class="${c.retaken ? "retaken" : ""}">
                     <td>${UI.escape(c.name)}</td>
                     <td>${c.credits}</td>
-                    <td>${c.grade}</td>
+                    <td>${this.gradeCell(c)}</td>
                     <td class="actions">
                       <button class="btn small" data-action="edit">수정</button>
                       <button class="btn small danger" data-action="delete">삭제</button>
@@ -123,6 +126,13 @@ const CoursesView = {
               </tbody>
             </table>`}
       </div>`;
+  },
+
+  /** 성적 칸: 재수강으로 빠진 이전 기록은 R, "-" 로 재수강해 이전 성적을 쓰면 그 성적을 함께 표시 */
+  gradeCell(c) {
+    if (c.retaken) return `<span class="retake-mark" title="재수강(RETAKE)으로 평가에서 제외">R</span> <small class="muted">(${c.grade})</small>`;
+    if (c.effectiveGrade && c.effectiveGrade !== c.grade) return `${c.grade} <small class="muted">(이전 성적 ${c.effectiveGrade} 적용)</small>`;
+    return c.grade;
   },
 
   /** 이벤트는 섹션 자체에 한 번만 연결 (render 마다 중복 연결 방지) */
@@ -134,6 +144,7 @@ const CoursesView = {
     root.addEventListener("submit", (e) => {
       e.preventDefault();
       const f = Object.fromEntries(new FormData(e.target).entries());
+      this.notice = null;
 
       if (e.target.dataset.form === "semester") {
         const key = `${Number(f.year)}-${f.semester}`;
@@ -147,12 +158,15 @@ const CoursesView = {
       // 과목 등록/수정: 연도·학기는 선택된 탭에서 가져온다
       const [year, semester] = this.selectedKey.split("-");
       const input = { ...f, name: f.name.trim(), year, semester };
-      const { ok, errors } = Validator.validateCourse(input);
-      if (!ok) return this.showErrors(errors);
+      const { errors } = Validator.validateCourse(input);
+      const retake = Validator.validateRetake(input, CourseService.getAll(), this.editingId);
+      const allErrors = [...errors, ...retake.errors];
+      if (allErrors.length) return this.showErrors(allErrors);
 
       const data = { ...input, year: Number(year), credits: Number(input.credits) };
       if (this.editingId) CourseService.update(this.editingId, data);
       else CourseService.add(data);
+      if (retake.previous && !this.editingId) this.notice = `'${input.name}' 과목을 재수강 하였습니다.`;
 
       // 과목이 생긴 학기는 더 이상 '빈 학기'가 아님 → 과목을 다 지우면 탭도 바로 사라진다
       this.emptySemesters.delete(this.selectedKey);
@@ -163,6 +177,7 @@ const CoursesView = {
     root.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-action]");
       if (!btn) return;
+      this.notice = null; // 다른 동작을 하면 재수강 안내는 지운다
       const id = btn.closest("tr")?.dataset.id;
 
       switch (btn.dataset.action) {

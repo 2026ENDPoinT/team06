@@ -95,6 +95,9 @@
 .form-actions .btn { padding: 9px 16px; }
 .error { color: var(--pen); margin: 0; font-size: 14px; }
 .error[hidden] { display: none; }
+.retake-notice { color: #d4a000; font-weight: 700; margin: 0; font-size: 14px; }
+.retake-mark { color: var(--pen); font-weight: 700; }
+tr.retaken td:not(.actions) { color: var(--muted); }
 td.actions { text-align: right; white-space: nowrap; }
 
 @media (max-width: 720px) {
