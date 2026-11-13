@@ -14,7 +14,7 @@ const DashboardView = {
 
   GRADE_COLORS: {
     "A+": "#1d2b4a", "A0": "#3f5a8a", "B+": "#9cc3b4", "B0": "#5f9c86",
-    "C+": "#e7c873", "C0": "#c9a443", "D+": "#e8a598", "D0": "#d3746a", "F": "#c8322e",
+    "C+": "#e7c873", "C0": "#c9a443", "D+": "#e8a598", "D0": "#d3746a", "F": "#c8322e", "PASS": "#b8bfcc", "FAIL": "#6b7385",
   },
 
   /** 총 평점에 따라 달라지는 한마디 */
@@ -42,9 +42,7 @@ const DashboardView = {
 
     const points = semesters.map((s) => ({ label: this.shortLabel(s.semesterKey), gpa: s.gpa }));
 
-    const dist = GPA.gradeDistribution(courses);
-    const usingSampleDist = Object.values(dist).every((n) => !n);
-    const grades = usingSampleDist ? StatsView.SAMPLE.grades : dist;
+    const grades = GPA.gradeDistribution(courses);
     const pastMessage = localStorage.getItem(this.PAST_MESSAGE_KEY);
 
     this.el().innerHTML = `
@@ -77,7 +75,6 @@ const DashboardView = {
 
         <div class="chart-area">
           <h2 class="chart-title">성적 등급 분포</h2>
-          ${usingSampleDist ? `<span class="placeholder-note">예시 그래프 · 기능 연결 후 실제 데이터로 바뀌어요</span>` : ""}
           ${this.pieChart(grades)}
         </div>
       </div>

@@ -31,6 +31,7 @@ const Tabs = {
   /** 현재 탭만 보이게 하고 다시 그린다 */
   show() {
     const name = this.current();
+    document.getElementById("page").style.minHeight = name === "login" ? "" : `${this.mainHeight()}px`;
     // TODO: 페이지 넘김 연출은 여기서 (이전 화면 → name 화면)
     for (const key of Object.keys(this.VIEWS)) {
       document.getElementById(`view-${key}`).hidden = key !== name;
@@ -41,6 +42,18 @@ const Tabs = {
     document.body.classList.toggle("locked", name === "login");
     this.VIEWS[name].render();
     window.scrollTo(0, 0);
+  },
+
+  /** 모든 페이지가 최소한 메인 화면만큼은 길도록, 메인을 잠깐 그려서 높이를 잰다 */
+  // ponytail: 창 크기를 바꿀 때는 다시 재지 않음. 필요하면 resize 이벤트에서 show() 호출
+  mainHeight() {
+    const page = document.getElementById("page");
+    page.style.minHeight = "";
+    for (const key of Object.keys(this.VIEWS)) {
+      document.getElementById(`view-${key}`).hidden = key !== "dashboard";
+    }
+    DashboardView.render();
+    return page.offsetHeight;
   },
 
   init() {
