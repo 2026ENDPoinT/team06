@@ -44,11 +44,7 @@ const LoginView = {
   render() {
     this.el().innerHTML = `
       <div class="login-card">
-        <svg class="login-stamp" viewBox="0 0 120 80" aria-hidden="true">
-          <path d="M12 40c0-22 30-32 52-30s46 10 46 30-20 30-50 30S12 62 12 40z"
-                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-          <text x="60" y="52" text-anchor="middle">팀6</text>
-        </svg>
+        <img class="login-stamp" src="assets/logo-cover.png" alt="" />
         <p class="login-desc">로그인하거나 게스트로 성적 노트를 펼쳐 보세요.</p>
         <button class="btn login-btn" data-provider="google">Google로 로그인</button>
         <button class="btn login-btn" type="button" data-action="guest">게스트로 시작</button>

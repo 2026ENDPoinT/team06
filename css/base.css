@@ -63,12 +63,13 @@ body {
   height: 96px;
   display: flex;
   align-items: flex-end;
-  padding: 0 0 14px 0;
+  padding: 90px 0 14px 0;
   border-bottom: 2px solid var(--ink);
   margin-right: 40px;
 }
 .brand { display: flex; flex-direction: column; text-decoration: none; color: var(--ink); line-height: 1; }
-.brand-mark { font-family: var(--hand); font-size: 54px; letter-spacing: 2px; }
+/* 팀 로고 그림: assets/logo.png(원본 회색) / assets/logo-cover.png(표지용 연한 갈색). 둘 다 선만 남긴 투명 배경 */
+.brand-mark { height: 52px; width: auto; align-self: center; margin-bottom: 4px; } /* 아래 글자(.brand-sub) 폭의 가운데 */
 .brand-sub { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: .5px; }
 
 /* ── 인덱스 탭 (책 위쪽에 꽂힌 책갈피) ── */
