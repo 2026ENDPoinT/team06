@@ -115,17 +115,11 @@ const CourseService = {
     return JSON.stringify(this.getAll(), null, 2);
   },
 
-  /** 파일 전체를 검증한 뒤 기존 목록을 교체한다. 일부만 가져오지 않는다. */
-  async importJSON(text) {
-    let courses;
-    try {
-      courses = JSON.parse(text.replace(/^\uFEFF/, ""));
-    } catch {
-      throw new Error("올바른 JSON 파일이 아닙니다.");
-    }
+  /** 불러올 과목 배열 전체를 검증하고, 저장할 필드만 남긴 복사본을 돌려준다. 하나라도 틀리면 예외. */
+  checkCourses(courses) {
     if (!Array.isArray(courses)) throw new Error("과목 배열 형식의 JSON 파일을 선택해 주세요.");
     const ids = new Set();
-    const imported = courses.map((course, index) => {
+    return courses.map((course, index) => {
       if (!DataStore.isCourse(course) || ids.has(course.id)) {
         throw new Error(`${index + 1}번째 과목 정보가 올바르지 않거나 ID가 중복됩니다.`);
       }
@@ -133,8 +127,24 @@ const CourseService = {
       const { id, name, year, semester, credits, grade } = course;
       return { id, name, year, semester, credits, grade };
     });
+  },
+
+  /** 검증한 과목 배열로 기존 목록 전체를 교체한다. 일부만 가져오지 않는다. */
+  async importCourses(courses) {
+    const imported = this.checkCourses(courses);
     await this.persist(imported, true);
     return imported.length;
+  },
+
+  /** (예전 방식) 과목 배열 JSON 문자열로 교체 */
+  async importJSON(text) {
+    let courses;
+    try {
+      courses = JSON.parse(text.replace(/^\uFEFF/, ""));
+    } catch {
+      throw new Error("올바른 JSON 파일이 아닙니다.");
+    }
+    return this.importCourses(courses);
   },
 
   /** 같은 JSON 원본을 Excel에서 열 수 있는 SpreadsheetML(.xml) 표로 변환한다. */
