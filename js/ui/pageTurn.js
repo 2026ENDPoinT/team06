@@ -37,6 +37,12 @@
  *    - 앞페이지로: ① 꺼내올 앞페이지들의 책갈피가 천천히 밑으로 내려가 페이지 뒤로 사라지고 (SINK)
  *                 ② 그 페이지가 책등 쪽에서 되말려 나와 지금 페이지(.under)를 덮는다.
  *    - 로그인 ↔ 메인은 가죽 표지가 같은 방식으로 넘어간다 (뒷면 = 표지 안쪽 색).
+ *    - 새겨지는 내용 (ink): 도착 페이지는 백지(줄만 있는 종이)로 드러나고, 내용(머리말·본문)은
+ *      접힌 선을 조금 뒤따라가며 서서히 나타난다. css mask 의 그라데이션 경계를 접힌 선에 맞춰 옮기는 방식.
+ *        · 뒷페이지로: 접힌 선이 오른쪽 → 왼쪽으로 가므로 내용도 오른쪽부터 새겨진다.
+ *        · 앞페이지로: 되말려 나온 페이지가 왼쪽부터 덮으므로 내용도 왼쪽부터 새겨진다.
+ *      넘김이 끝나는 순간 전체가 다 보이도록 뒤따르는 거리는 끝으로 갈수록 0 이 된다.
+ *      도착 페이지가 로그인 표지일 때는 하지 않는다 (가죽 표지는 통째로 보여야 함).
  *
  * 4. 함께 넘어가는 책갈피
  *    두 페이지 사이의 페이지들(앞쪽 페이지 ~ 뒤쪽 페이지 직전)의 책갈피.
@@ -56,6 +62,7 @@
  * ── 조절 손잡이 ─────────────────────────────────────────────────────
  *  - 순서·하강치: 아래 ORDER / TAB_STEP / TAB_MAX
  *  - 넘김 속도·귀퉁이가 들리는 높이: 아래 DUR / SINK / LIFT
+ *  - 내용이 새겨지는 느낌: 아래 INK_LAG / INK_SOFT
  *  - 지금 페이지 책갈피 모양: css/base.css "인덱스 탭", "설정 책갈피" 구역
  */
 const PageTurn = {
@@ -70,6 +77,10 @@ const PageTurn = {
   DUR: 500,
   SINK: 200,
   LIFT: 0.16,
+
+  /** 새겨지는 내용: 접힌 선 뒤로 백지인 채 남는 폭, 흐릿하게 나타나는 경계의 폭 (둘 다 페이지 너비 대비) */
+  INK_LAG: 0.08,
+  INK_SOFT: 0.35,
 
   /** 1) 화면이 바뀌면 다시 그리기 전에 지금 페이지를 복사해 둔다 */
   capture(page, prev, name) {
@@ -141,7 +152,26 @@ const PageTurn = {
     }));
 
     /** e = 0(펼쳐진 상태) ~ 1(다 넘어감). 좌표는 페이지 왼쪽 위가 (0,0) */
+    // 새겨지는 내용 (규칙 3): 도착 페이지(#page)의 내용물. 책갈피 복사본과 로그인 표지는 제외
+    const inked = name === "login" ? [] : [...page.children]
+      .filter((el) => !el.classList.contains("tab"))
+      .map((el) => ({ el, left: el.offsetLeft }));
+    const lag = W * this.INK_LAG;
+    const soft = W * this.INK_SOFT;
+    const ink = (e) => {
+      const fold = W * (1 - e); // 접힌 선의 가로 위치 (가운데 높이 기준)
+      // 경계 x: 처음엔 내용이 전부 숨고, 끝(뒷페이지로 e=1 / 앞페이지로 e=0)엔 전부 드러나는 위치
+      const x = forward ? fold + lag * (1 - e) - soft * e : fold - lag * e + soft * (1 - e);
+      for (const { el, left } of inked) {
+        const at = x - left;
+        el.style.maskImage = el.style.webkitMaskImage = forward
+          ? `linear-gradient(90deg, transparent ${at}px, #000 ${at + soft}px)`  // 경계 오른쪽만 보임
+          : `linear-gradient(90deg, #000 ${at - soft}px, transparent ${at}px)`; // 경계 왼쪽만 보임
+      }
+    };
+
     const draw = (e) => {
+      ink(e);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       // 귀퉁이 C=(W,H) 가 P 로 끌려간다. n = C − P, 접힌 선 = C·P 의 수직이등분선
@@ -230,6 +260,7 @@ const PageTurn = {
       copies.forEach((c) => c.remove());
       page.classList.remove("returning");
       page.style.clipPath = "";
+      inked.forEach(({ el }) => (el.style.maskImage = el.style.webkitMaskImage = ""));
       tabs.forEach((tab) => (tab.style.visibility = ""));
       document.querySelectorAll("[data-tab]").forEach((el) => el.classList.toggle("active", el.dataset.tab === name));
     };
