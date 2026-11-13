@@ -99,9 +99,12 @@ body {
 .tab:hover { transform: translateY(4px); }
 .tab.active { transform: translateY(0); font-weight: 700; }
 
-/* 로그인 전에는 탭이 잠겨 있음 */
+/* 로그인 화면: 노트 종이는 숨기고 가죽 표지만 보이게 */
+body.locked .page { background: none; box-shadow: none; padding: 0; }
+body.locked .page-head,
 body.locked .tabs,
-body.locked .ribbon { pointer-events: none; filter: saturate(.3); opacity: .6; }
+body.locked .ribbon { display: none; }
+body.locked .container { padding: 0; }
 
 /* ── 설정 리본 ───────────────────────────── */
 .ribbon {
