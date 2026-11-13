@@ -10,6 +10,53 @@ const DashboardView = {
   NICKNAME: "닉네임",
   NICKNAME_MAX: 20,
 
+  adviceKey(courses) {
+    return JSON.stringify([CourseService.uid, CourseService.generation, courses]);
+  },
+
+  adviceState(courses) {
+    const key = this.adviceKey(courses);
+    if (this.aiAdvice?.key !== key) this.aiAdvice = { key, text: "", error: "", busy: false };
+    return this.aiAdvice;
+  },
+
+  adviceHtml(courses) {
+    const state = this.adviceState(courses);
+    const disabled = state.busy || !courses.length || CourseService.loading || CourseService.loadError || CourseService.saving || !FirebaseAuth.ready || !FirebaseAuth.app;
+    return `
+      <div class="label">AI 조언</div>
+      <p data-advice-result role="status" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere" class="${state.error ? "error" : ""}">${UI.escape(state.busy ? "성적을 분석하고 있어요…" : state.error || state.text || (courses.length ? "성적 흐름을 살펴보고 다음 학기 학습 계획을 제안해요." : "과목을 등록하면 AI 조언을 받을 수 있어요."))}</p>
+      <p class="muted"><small>버튼을 누르면 GPA·학점·등급·학기별 요약을 Gemini에 전송해요. AI 답변은 참고용이에요.</small></p>
+      <button type="button" class="btn" data-ai-advice ${disabled ? "disabled" : ""}>${state.busy ? "생성 중…" : state.text || state.error ? "다시 요청" : "AI 조언 받기"}</button>`;
+  },
+
+  refreshAdvice() {
+    const bubble = this.el().querySelector(".advice-bubble");
+    if (!bubble) return;
+    bubble.innerHTML = this.adviceHtml(CourseService.getAll());
+    bubble.querySelector("[data-ai-advice]").addEventListener("click", () => this.requestAdvice());
+  },
+
+  async requestAdvice() {
+    const courses = CourseService.getAll();
+    const state = this.adviceState(courses);
+    if (state.busy || !courses.length || !FirebaseAuth.ready || !FirebaseAuth.app) return;
+    try {
+      CourseService.assertReady();
+      state.busy = true;
+      state.error = "";
+      this.refreshAdvice();
+      const text = await FirebaseAuth.generateAdvice(courses);
+      if (this.aiAdvice !== state || this.adviceKey(CourseService.getAll()) !== state.key) return;
+      state.text = text;
+    } catch (error) {
+      if (this.aiAdvice === state && this.adviceKey(CourseService.getAll()) === state.key) state.error = FirebaseAuth.adviceError(error);
+    } finally {
+      state.busy = false;
+      this.refreshAdvice();
+    }
+  },
+
   /** 설정에서 바꾼 닉네임은 계정(또는 게스트)별로 이 브라우저에 저장 */
   nicknameKey() {
     return `team06.nickname.${CourseService.uid || "guest"}`;
@@ -134,8 +181,7 @@ const DashboardView = {
         <div class="advisor">
           ${this.robot()}
           <div class="advice-bubble">
-            <div class="label">AI 조언</div>
-            <p class="muted">준비 중이에요. 등록한 성적을 바탕으로 다음 학기 조언을 들려줄 거예요.</p>
+            ${this.adviceHtml(courses)}
           </div>
         </div>
 
@@ -161,6 +207,7 @@ const DashboardView = {
       </dialog>
     `;
 
+    this.refreshAdvice();
     const dialog = this.el().querySelector(".future-dialog");
     this.el().querySelector(".send-future").addEventListener("click", () => dialog.showModal());
     dialog.querySelector("form").addEventListener("submit", (e) => {
