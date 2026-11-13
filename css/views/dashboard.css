@@ -149,9 +149,10 @@
   color: var(--pen);
 }
 
-.advisor { display: grid; align-self: stretch; grid-template-columns: 100px 1fr; gap: 16px; align-items: end; }
-.robot { width: 100%; color: var(--ink); }
-.advice-bubble {
+/* 목표 GPA 시뮬레이터: 사다리를 오르는 캐릭터 + 오른쪽 직사각형 말풍선 */
+.goal { display: grid; align-self: stretch; grid-template-columns: 130px 1fr; gap: 16px; align-items: end; }
+.climber { width: 100%; color: var(--ink); align-self: start; } /* 위에 고정: 말풍선이 길어져도 그림은 안 내려가고, 꼬리(top 64px)와 손 높이가 맞는다 */
+.goal-bubble {
   position: relative;
   border: 1.5px solid var(--ink);
   background: var(--paper);
@@ -159,11 +160,11 @@
   min-height: 180px;
   height: 100%;
 }
-.advice-bubble::before { /* 말풍선 꼬리 */
+.goal-bubble::before { /* 말풍선 꼬리: 흔드는 손 높이 */
   content: "";
   position: absolute;
   left: -10px;
-  top: 40px;
+  top: 64px;
   width: 16px;
   height: 16px;
   background: var(--paper);
@@ -171,10 +172,10 @@
   border-bottom: 1.5px solid var(--ink);
   transform: rotate(45deg);
 }
-.advice-bubble .label { font-family: var(--hand); font-size: 30px; line-height: 1; }
-.advice-bubble p { margin: 10px 0 0; font-size: 18px; line-height: 1.7; }
 
-/* 목표 GPA 시뮬레이터 */
+/* 말풍선 안: 목표 GPA 시뮬레이터 */
+.goal-bubble .label { font-family: var(--hand); font-size: 30px; line-height: 1; }
+.goal-bubble p { margin: 10px 0 0; font-size: 18px; line-height: 1.7; }
 .goal-input { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 18px; }
 .goal-input input {
   width: 110px;
@@ -189,9 +190,9 @@
   text-align: center;
 }
 .goal-input input:focus { outline: 0; border-bottom-color: var(--pen); }
-.advice-bubble .goal-msg { font-family: var(--hand); font-size: 26px; line-height: 1.3; color: var(--pen); }
+.goal-bubble .goal-msg { font-family: var(--hand); font-size: 26px; line-height: 1.3; color: var(--pen); }
 .goal-need { font-size: 24px; color: var(--pen); }
-.advice-bubble .error { color: #c8322e; }
+.goal-bubble .error { color: #c8322e; }
 
 @media (max-width: 960px) {
   .dash-row { grid-template-columns: 1fr; }

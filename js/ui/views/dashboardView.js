@@ -1,6 +1,7 @@
 /**
  * [담당: 프론트엔드] 탭 1 — 메인
- * 인사말, 주요 지표 3칸, 학기별 평점 그래프, 총 평점 + 한마디, 목표 GPA 시뮬레이터,
+ * 인사말, 주요 지표 3칸, 학기별 평점 그래프, 총 평점 + 한마디,
+ * 목표 GPA 시뮬레이터(사다리를 오르는 캐릭터 + 말풍선),
  * 성적 등급 분포(원형), 지난 나로부터의 메세지(읽기 전용)
  */
 const DashboardView = {
@@ -82,7 +83,7 @@ const DashboardView = {
   },
 
   bindTarget() {
-    const bubble = this.el().querySelector(".advice-bubble");
+    const bubble = this.el().querySelector(".goal-bubble");
     const input = bubble?.querySelector("[data-target-gpa]");
     if (!input) return;
     input.addEventListener("input", () => {
@@ -212,9 +213,9 @@ const DashboardView = {
       </div>
 
       <div class="dash-row">
-        <div class="advisor">
-          ${this.robot()}
-          <div class="advice-bubble">
+        <div class="goal">
+          ${this.climber()}
+          <div class="goal-bubble">
             ${this.targetHtml()}
           </div>
         </div>
@@ -302,21 +303,39 @@ const DashboardView = {
       </div>`;
   },
 
-  /** 목표 GPA 시뮬레이터 옆 캐릭터 (임시 그림) */
-  robot() {
+  /**
+   * 목표를 향해 사다리를 오르는 낙서 캐릭터.
+   * 보는 사람 쪽을 향한 채 오른손(화면 왼쪽)은 사다리를 잡고, 왼손(화면 오른쪽)은 말풍선 쪽으로 흔든다.
+   * 그리는 순서 = 겹치는 순서: 사다리 → 다리 → 몸·머리 → 팔·손
+   */
+  climber() {
     return `
-      <svg class="robot" viewBox="0 0 100 150" aria-hidden="true">
-        <g fill="var(--paper)" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
-          <path d="M20 46c0-22 14-36 32-36s30 14 30 36-12 32-31 32-31-10-31-32z"/>
-          <rect x="30" y="34" width="44" height="26" rx="6"/>
-          <path d="M28 88h46l4 34H24z"/>
-          <path d="M74 96l18-14"/><path d="M90 78l6 2-2 6"/>
-          <path d="M28 96l-8 24"/>
-          <path d="M36 122v20M62 122v20"/>
+      <svg class="climber" viewBox="0 0 130 200" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+          <!-- 사다리 -->
+          <path d="M40 198L46 4M92 198L88 4"/>
+          <path d="M45.3 26h43.2M44.4 56h44.7M43.5 86h46.2M42.5 116h47.8M41.6 146h49.3M40.7 176h50.8"/>
+          <!-- 다리: 화면 왼쪽은 굽혀 윗칸을, 오른쪽은 뻗어 아랫칸을 딛는다 -->
+          <path d="M63 128l-11 8 7 10M52 146h14"/>
+          <path d="M82 128l2 48M78 176h13"/>
+          <!-- 몸·머리 (기존 로봇 그림을 0.78배로) -->
+          <g transform="translate(34 34) scale(.78)" fill="var(--paper)" stroke-width="3.2">
+            <path d="M28 88h46l4 34H24z"/>
+            <path d="M20 46c0-22 14-36 32-36s30 14 30 36-12 32-31 32-31-10-31-32z"/>
+            <rect x="30" y="34" width="44" height="26" rx="6"/>
+            <circle cx="44" cy="47" r="4" fill="currentColor" stroke="none"/>
+            <circle cx="60" cy="47" r="4" fill="currentColor" stroke="none"/>
+            <circle cx="52" cy="14" r="2" fill="currentColor" stroke="none"/>
+            <path d="M46 54q6 4 12 0" fill="none"/>
+          </g>
+          <!-- 오른손: 사다리 기둥을 잡음 -->
+          <path d="M57 110q-18 5-13.5-19"/>
+          <circle cx="43.5" cy="89" r="5" fill="var(--paper)"/>
+          <!-- 왼손: 들어 올려 흔듦 + 흔드는 선 -->
+          <path d="M92 109q16-3 20-27"/>
+          <circle cx="113" cy="77" r="5.5" fill="var(--paper)"/>
+          <path d="M121 66q5 7 2 15M104 65q5-6 13-4" stroke-width="2"/>
         </g>
-        <circle cx="44" cy="47" r="4" fill="currentColor"/>
-        <circle cx="60" cy="47" r="4" fill="currentColor"/>
-        <circle cx="52" cy="14" r="2" fill="currentColor"/>
       </svg>`;
   },
 };
