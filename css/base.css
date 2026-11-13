@@ -42,7 +42,6 @@ body {
 }
 .page {
   position: relative;
-  min-height: calc(100vh - 96px);
   background:
     linear-gradient(90deg, transparent 63px, var(--margin) 63px 65px, transparent 65px),
     repeating-linear-gradient(transparent 0 calc(var(--line-h) - 1px), var(--rule) calc(var(--line-h) - 1px) var(--line-h)),
