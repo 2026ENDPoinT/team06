@@ -3,3 +3,4 @@
  */
 CourseService.init();
 Tabs.init();
+FirebaseAuth.init(() => Tabs.show());

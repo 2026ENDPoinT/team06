@@ -38,3 +38,24 @@
   border-color: #3a1f0c;
 }
 .login-btn:hover { background: #f3d895; }
+
+.login-email-form {
+  display: grid;
+  gap: 12px;
+  width: min(460px, 100%);
+}
+.login-email-form label { display: grid; gap: 6px; width: 100%; }
+.login-email-form input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  font: inherit;
+  color: #3a1f0c;
+  background: #fff8e8;
+  border: 1px solid #e9c87a;
+  border-radius: 4px;
+}
+.login-email-form .login-btn { width: 100%; }
+.login-card button:disabled { opacity: .6; cursor: wait; }
+.login-message, .login-local-note { width: min(460px, 100%); margin: 0; overflow-wrap: anywhere; }
+.login-local-note { font-size: 13px; line-height: 1.6; }
