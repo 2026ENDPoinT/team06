@@ -55,7 +55,9 @@ const LoginView = {
     this.el().querySelector('[data-provider="google"]').addEventListener("click", () => this.run(() => FirebaseAuth.google()));
     this.el().querySelector('[data-action="guest"]').addEventListener("click", () => this.startGuest());
     this.setBusy(this.busy || !FirebaseAuth.ready || Boolean(FirebaseAuth.error));
-    this.showMessage(FirebaseAuth.error || (!FirebaseAuth.ready ? "로그인 상태를 확인하고 있습니다…" : ""));
+    // 파일로 직접 연 경우(file://)의 "웹 서버에서 실행해 주세요" 안내는 표시하지 않는다 (Google 로그인 버튼만 비활성)
+    const servedOverHttp = ["http:", "https:"].includes(location.protocol);
+    this.showMessage((servedOverHttp && FirebaseAuth.error) || (!FirebaseAuth.ready ? "로그인 상태를 확인하고 있습니다…" : ""));
   },
   showMessage(message) {
     this.el().querySelector(".login-message").textContent = message;

@@ -103,9 +103,41 @@ const Tabs = {
     return scale;
   },
 
+  /**
+   * 메인 높이를 다시 재서 배율만 맞춘다. 지금 보는 화면은 다시 그리지 않음 (입력 중인 내용·애니메이션 유지)
+   * 웹폰트가 늦게 로드되면 처음 잰 높이(대체 글꼴 기준)가 달라져, 첫 탭 전환 때 화면 크기가 툭 바뀌는 것을 막는다.
+   */
+  refit() {
+    if (PageTurn.finish) return; // 넘기는 중이면 다음 show() 가 어차피 다시 잰다
+    const name = this.current();
+    const page = document.getElementById("page");
+    const container = page.querySelector(".container");
+    const top = container.scrollTop;
+    this.fit();
+    if (name === "dashboard" && !CourseService.loading && !CourseService.loadError) {
+      page.style.height = ""; // 메인을 보고 있으면 그대로 잰다
+      this.mainH = page.offsetHeight;
+    } else {
+      this.mainH = this.mainHeight(); // 숨은 메인을 그려서 잰 뒤 원래 화면으로 되돌림
+      for (const key of Object.keys(this.VIEWS)) {
+        document.getElementById(`view-${key}`).hidden = key !== name;
+      }
+      document.body.classList.toggle("locked", name === "login");
+    }
+    page.style.height = `${this.mainH}px`;
+    this.fit(this.mainH);
+    container.scrollTop = top;
+  },
+
   init() {
     window.addEventListener("hashchange", () => this.show());
     window.addEventListener("resize", () => this.fit(this.mainH));
+    let queued = false;
+    document.fonts?.addEventListener("loadingdone", () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; this.refit(); });
+    });
     this.show();
   },
 };

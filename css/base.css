@@ -132,7 +132,9 @@ body {
 body.locked #page, .page.cover { background: none; box-shadow: none; padding: 0; display: grid; } /* 표지가 페이지 크기만큼 늘어나도록 */
 body.locked #page .page-head, .cover .page-head,
 body.locked .tabs { display: none; }
-body.locked #page .container, .cover .container { padding: 0; display: grid; }
+body.locked #page .container, .cover .container { padding: 0; display: grid; overflow: visible; }
+/* 표지를 페이지보다 14px 길게: 넘기는 동안 밑에 깔린 노트의 종이 옆면(오른쪽 아래로 3~9px + 표지 14px)이 표지 아래로 비치지 않게 */
+#view-login { margin-bottom: -14px; }
 
 /* ── 페이지 넘김 ─────────────────────────── */
 /* 넘기는 연출(2D 페이지 컬)은 js/ui/pageTurn.js 가 clip-path + 캔버스(.page-flap)로 그린다. 여기는 겹치는 순서만 */
@@ -146,6 +148,10 @@ body.locked #page .container, .cover .container { padding: 0; display: grid; }
 .page.under { z-index: 0; }     /* 앞페이지로: 이전 페이지 복사본은 밑에 깔리고 */
 .page.returning { z-index: 2; } /*            새 페이지가 되말려 나와 덮는다 */
 .page-flap { position: absolute; z-index: 4; pointer-events: none; } /* 접힌 종이 뒷면 + 그림자 */
+/* 넘기는 동안 도착 페이지의 애니메이션(그래프 등)은 첫 장면에 멈춰 있다가 넘김이 끝나면 시작 (pageTurn.js 가 붙였다 뗌) */
+.page.inking .view * { animation-play-state: paused !important; }
+/* 떠나는 페이지 복사본은 이미 떠 있던 화면 그대로 (복사하면 애니메이션이 처음부터 다시 재생되므로 끈다) */
+.page.turning .view *, .page.under .view * { animation: none !important; }
 
 /* ── 설정 책갈피 (책 오른쪽 옆에 꽂힌 빨간 책갈피) ── */
 /*
