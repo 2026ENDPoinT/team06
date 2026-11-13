@@ -55,18 +55,28 @@ const SettingsView = {
 
       <div class="card settings-row">
         <div>
-          <h2>로그아웃</h2>
-          <p class="muted">로그인 화면으로 돌아가요.</p>
+          <h2>${LoginView.isGuest() ? "게스트 모드" : "로그아웃"}</h2>
+          <p class="muted">${LoginView.isGuest() ? "게스트로 이용 중이에요. 종료해도 저장한 과목 기록은 유지돼요." : "로그인 화면으로 돌아가요."}</p>
         </div>
         <div class="settings-control">
-          <button class="btn" data-action="logout">로그아웃</button>
+          <button class="btn" data-action="logout">${LoginView.isGuest() ? "게스트 종료 · 로그인" : "로그아웃"}</button>
         </div>
       </div>
 
       <span class="placeholder-note">닉네임 저장은 준비 중이에요.</span>
     `;
 
-    this.el().querySelector('[data-action="logout"]').addEventListener("click", () => LoginView.logout());
+    this.el().querySelector('[data-action="logout"]').addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        await LoginView.logout();
+      } catch (error) {
+        this.showStatus(FirebaseAuth.message(error), true);
+      } finally {
+        button.disabled = false;
+      }
+    });
     this.bindDataEvents();
   },
 

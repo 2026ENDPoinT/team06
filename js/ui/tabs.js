@@ -24,7 +24,7 @@ const Tabs = {
 
   current() {
     const name = location.hash.replace("#", "");
-    if (!LoginView.isLoggedIn()) return "login";
+    if (!LoginView.isLoggedIn() && !LoginView.isGuest()) return "login";
     if (name === "login") return this.DEFAULT;
     return this.VIEWS[name] ? name : this.DEFAULT;
   },
