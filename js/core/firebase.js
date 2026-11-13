@@ -1,7 +1,7 @@
 /** Firebase Authentication. 과목 저장소와 독립적으로 로그인만 담당한다. */
 const FirebaseAuth = {
   // Firebase App Check에 등록한 공개 reCAPTCHA 사이트 키를 사용한다.
-  AI_CONFIG: { siteKey: "6Ldo3B4uAAAAAAm85F-hgPhA1kZ2rqVujorgQkYs", provider: "enterprise", model: "gemini-3.8-flash" },
+  AI_CONFIG: { siteKey: "6Ldo3B4uAAAAAAm85F-hgPhA1kZ2rqVujorgQkYs", provider: "enterprise", model: "gemini-3.8-flash", fallbackModel: "gemini-3.5-flash-lite", timeout: 45000 },
   user: null,
   ready: false,
   error: null,
@@ -81,21 +81,23 @@ const FirebaseAuth = {
     }
     return this.appCheckPromise;
   },
-  async adviceModel() {
+  async adviceModel(modelName = this.AI_CONFIG.model) {
     await this.initAppCheck();
-    if (!this.adviceModelPromise) {
-      this.adviceModelPromise = import("https://www.gstatic.com/firebasejs/13.3.0/firebase-ai.js")
+    this.adviceModels ??= new Map();
+    if (!this.adviceModels.has(modelName)) {
+      const promise = import("https://www.gstatic.com/firebasejs/13.3.0/firebase-ai.js")
         .then((sdk) => {
           const ai = sdk.getAI(this.app, { backend: new sdk.GoogleAIBackend(), useLimitedUseAppCheckTokens: true });
           return sdk.getGenerativeModel(ai, {
-            model: this.AI_CONFIG.model,
-            systemInstruction: "당신은 대학생의 학습 계획을 돕는 조언자다. 제공된 성적 요약만 근거로 한국어로 답하라. 수치는 이미 계산된 값을 그대로 사용하고, 정보가 없으면 추측하지 마라. PASS/FAIL·미입력은 평점에서 제외되며 재수강 이전 성적은 평가에서 제외되어 있다. 격려 1문장과 구체적인 학습 실천 3가지를 450자 이내의 일반 텍스트로 작성하라. 마크다운과 HTML은 사용하지 마라. 취업·졸업·장학금 가능성을 단정하지 마라.",
-            generationConfig: { maxOutputTokens: 1024, temperature: 0.5 },
-          }, { timeout: 30000 });
+            model: modelName,
+            systemInstruction: "당신은 대학생의 성적을 분석하는 학습 조언자다. 제공된 성적 요약만 근거로 현실적이고 직접적인 한국어로 답하라. 격려, 감성 표현, 인사, 서론은 생략하라. 답변은 총 180자 이내, 정확히 3줄로 작성하라: '진단: 성적에서 확인되는 핵심 사실 1개', '우선: 가장 먼저 할 구체적 행동 1개', '실행: 바로 적용할 학습 방법 1개'. 각 줄은 짧은 한 문장으로 끝내고 마크다운과 HTML은 사용하지 마라. 수치는 제공된 값을 그대로 쓰고 원인·과목명·달성 가능한 평점을 추측하지 마라. 성적이 없으면 진단에 판단 근거가 부족함을 명시하고 성적 입력을 우선 행동으로 제안하라. PASS/FAIL·미입력은 평점에서 제외되며 재수강 이전 성적도 평가에서 제외되어 있다. 취업·졸업·장학금 가능성을 단정하지 마라.",
+            generationConfig: { maxOutputTokens: 1024, temperature: 0.2 },
+          }, { timeout: this.AI_CONFIG.timeout });
         })
-        .catch((error) => { this.adviceModelPromise = null; throw error; });
+        .catch((error) => { this.adviceModels.delete(modelName); throw error; });
+      this.adviceModels.set(modelName, promise);
     }
-    return this.adviceModelPromise;
+    return this.adviceModels.get(modelName);
   },
   adviceSummary(courses) {
     if (!courses.length) throw new Error("과목을 먼저 등록해 주세요.");
@@ -110,19 +112,50 @@ const FirebaseAuth = {
       })),
     };
   },
-  async generateAdvice(courses) {
+  adviceRetryable(error) {
+    const code = String(error.code || "");
+    const message = String(error.message || "");
+    // 인증·설정·일일 할당량 문제는 반복 요청으로 해결되지 않는다.
+    if (/app.?check|permission|unauthorized|cancelled/i.test(code) || /quota.*(?:daily|per.day|limit:\s*0)|billing/i.test(message)) return false;
+    const status = Number(error.status || error.customData?.status) || Number(message.match(/\[(\d{3})\s*\]/)?.[1]);
+    return [429, 500, 502, 503, 504].includes(status)
+      || /timeout|timed.out|deadline.exceeded|high demand|overloaded|temporarily unavailable/i.test(`${code} ${message}`);
+  },
+  adviceDelay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  },
+  async generateAdvice(courses, { onProgress = () => {}, isCurrent = () => true } = {}) {
     const summary = this.adviceSummary(courses);
-    const model = await this.adviceModel();
-    const result = await model.generateContent(`다음 성적 요약을 바탕으로 다음 학기를 위한 조언을 해 주세요.\n${JSON.stringify(summary)}`);
-    const text = result.response.text().trim();
-    if (!text) throw new Error("조언을 생성하지 못했습니다. 다시 시도해 주세요.");
-    return text;
+    const prompt = `다음 성적 요약에서 핵심 문제와 우선 행동을 골라 진단·우선·실행의 3줄로 간결하게 답하라.\n${JSON.stringify(summary)}`;
+    const models = [this.AI_CONFIG.model, this.AI_CONFIG.model, this.AI_CONFIG.fallbackModel];
+    const checkCurrent = () => {
+      if (!isCurrent()) throw Object.assign(new Error("계정이나 성적이 변경되어 요청을 중단했습니다."), { code: "ai/cancelled" });
+    };
+    for (let attempt = 0; attempt < models.length; attempt++) {
+      checkCurrent();
+      onProgress(attempt === 2 ? "서버가 혼잡해 다른 AI 모델로 조언을 요청하고 있어요… (3/3)" : `성적을 분석하고 있어요… (${attempt + 1}/3)`);
+      try {
+        const model = await this.adviceModel(models[attempt]);
+        checkCurrent();
+        const result = await model.generateContent(prompt);
+        checkCurrent();
+        const text = result.response.text().trim();
+        if (!text) throw new Error("조언을 생성하지 못했습니다. 다시 시도해 주세요.");
+        return text;
+      } catch (error) {
+        checkCurrent();
+        if (!this.adviceRetryable(error) || attempt === models.length - 1) throw error;
+        onProgress("응답이 지연되고 있어요. 잠시 기다린 뒤 자동으로 다시 요청합니다…");
+        await this.adviceDelay(1500 * (2 ** attempt) + Math.floor(Math.random() * 500));
+      }
+    }
   },
   adviceError(error) {
     const code = String(error.code || "");
     if (code.includes("appCheck") || code.includes("app-check") || code.includes("fetch-status-error")) return "앱 인증에 실패했습니다. App Check 사이트 키와 허용 도메인을 확인해 주세요.";
     if (/429|quota|resource-exhausted/i.test(`${code} ${error.message}`)) return "AI 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.";
     if (/403|permission|unauthorized/i.test(`${code} ${error.message}`)) return "AI 접근이 허용되지 않았습니다. Firebase AI Logic과 App Check 설정을 확인해 주세요.";
+    if (this.adviceRetryable(error)) return "AI 서버가 혼잡하거나 응답이 지연되고 있습니다. 자동 재시도 후에도 응답을 받지 못했어요. 잠시 후 다시 요청해 주세요.";
     return code.startsWith("ai/") ? "AI 조언을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." : error.message || "AI 연결에 실패했습니다.";
   },
   message(error) {
