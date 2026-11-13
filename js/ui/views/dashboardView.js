@@ -25,7 +25,7 @@ const DashboardView = {
     const disabled = state.busy || !courses.length || CourseService.loading || CourseService.loadError || CourseService.saving || !FirebaseAuth.ready || !FirebaseAuth.app;
     return `
       <div class="label">AI 조언</div>
-      <p data-advice-result role="status" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere" class="${state.error ? "error" : ""}">${UI.escape(state.busy ? "성적을 분석하고 있어요…" : state.error || state.text || (courses.length ? "성적 흐름을 살펴보고 다음 학기 학습 계획을 제안해요." : "과목을 등록하면 AI 조언을 받을 수 있어요."))}</p>
+      <p data-advice-result role="status" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere" class="${state.error ? "error" : ""}">${UI.escape(state.busy ? state.progress || "성적을 분석하고 있어요…" : state.error || state.text || (courses.length ? "성적 흐름을 살펴보고 다음 학기 학습 계획을 제안해요." : "과목을 등록하면 AI 조언을 받을 수 있어요."))}</p>
       <p class="muted"><small>버튼을 누르면 GPA·학점·등급·학기별 요약을 Gemini에 전송해요. AI 답변은 참고용이에요.</small></p>
       <button type="button" class="btn" data-ai-advice ${disabled ? "disabled" : ""}>${state.busy ? "생성 중…" : state.text || state.error ? "다시 요청" : "AI 조언 받기"}</button>`;
   },
@@ -46,7 +46,14 @@ const DashboardView = {
       state.busy = true;
       state.error = "";
       this.refreshAdvice();
-      const text = await FirebaseAuth.generateAdvice(courses);
+      const text = await FirebaseAuth.generateAdvice(courses, {
+        isCurrent: () => this.aiAdvice === state && this.adviceKey(CourseService.getAll()) === state.key,
+        onProgress: (message) => {
+          if (this.aiAdvice !== state || this.adviceKey(CourseService.getAll()) !== state.key) return;
+          state.progress = message;
+          this.refreshAdvice();
+        },
+      });
       if (this.aiAdvice !== state || this.adviceKey(CourseService.getAll()) !== state.key) return;
       state.text = text;
     } catch (error) {
