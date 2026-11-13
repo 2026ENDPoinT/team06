@@ -149,9 +149,10 @@
   color: var(--pen);
 }
 
-.advisor { display: grid; align-self: stretch; grid-template-columns: 100px 1fr; gap: 16px; align-items: end; }
-.robot { width: 100%; color: var(--ink); }
-.advice-bubble {
+/* 목표 평점 계산 자리: 사다리를 오르는 캐릭터 + 오른쪽 직사각형 말풍선 (내용은 아직 비어 있음) */
+.goal { display: grid; align-self: stretch; grid-template-columns: 130px 1fr; gap: 16px; align-items: end; }
+.climber { width: 100%; color: var(--ink); }
+.goal-bubble {
   position: relative;
   border: 1.5px solid var(--ink);
   background: var(--paper);
@@ -159,11 +160,11 @@
   min-height: 180px;
   height: 100%;
 }
-.advice-bubble::before { /* 말풍선 꼬리 */
+.goal-bubble::before { /* 말풍선 꼬리: 흔드는 손 높이 */
   content: "";
   position: absolute;
   left: -10px;
-  top: 40px;
+  top: 64px;
   width: 16px;
   height: 16px;
   background: var(--paper);
@@ -171,8 +172,6 @@
   border-bottom: 1.5px solid var(--ink);
   transform: rotate(45deg);
 }
-.advice-bubble .label { font-family: var(--hand); font-size: 30px; line-height: 1; }
-.advice-bubble p { margin: 10px 0 0; font-size: 18px; line-height: 1.7; }
 
 @media (max-width: 960px) {
   .dash-row { grid-template-columns: 1fr; }
