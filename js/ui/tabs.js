@@ -64,6 +64,7 @@ const Tabs = {
   mainHeight() {
     const page = document.getElementById("page");
     page.style.minHeight = "";
+    document.body.classList.remove("locked"); // 표지 모양(머리말·여백 없음)인 채로 재면 메인보다 짧게 나온다. show() 가 바로 다시 정함
     for (const key of Object.keys(this.VIEWS)) {
       document.getElementById(`view-${key}`).hidden = key !== "dashboard";
     }
