@@ -53,11 +53,15 @@ const StatsView = {
         </div>
       </div>
     `;
+    // 넘치는 그래프는 최근 학기가 보이도록 오른쪽 끝으로
+    this.el().querySelectorAll(".bar-scroll").forEach((el) => { el.scrollLeft = el.scrollWidth; });
   },
 
-  /** 세로 막대 그래프 (CSS 로만 그림) */
+  /** 세로 막대 그래프 (CSS 로만 그림)
+   *  학기가 많아지면 막대가 좁아지는 대신 칸마다 최소 너비를 두고 가로 스크롤 → 최근 학기(오른쪽 끝)부터 보여준다 */
   barChart(items, max, variant = "") {
     return `
+      <div class="bar-scroll"><div class="bar-inner" style="min-width:${items.length * 56}px">
       <div class="chart-box">
         ${items.map((it) => `
           <div class="bar-col">
@@ -65,7 +69,8 @@ const StatsView = {
             <div class="bar ${variant}" style="height:${(it.value / max) * 85}%"></div>
           </div>`).join("")}
       </div>
-      <div class="bar-labels">${items.map((it) => `<span>${it.label}</span>`).join("")}</div>`;
+      <div class="bar-labels">${items.map((it) => `<span>${it.label}</span>`).join("")}</div>
+      </div></div>`;
   },
 
   /** 등급별 가로 막대 */
