@@ -1,0 +1,16 @@
+/* 로그인 화면 */
+#view-login { min-height: 60vh; place-items: center; }
+
+.login-card {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 36px 40px 40px;
+  border: 1.5px solid var(--ink);
+  background: var(--paper);
+}
+.login-stamp { width: 150px; color: var(--ink); }
+.login-stamp text { font-family: var(--hand); font-size: 34px; fill: currentColor; }
+.login-desc { margin: 0 0 8px; color: var(--muted); }
+.login-btn { width: 100%; padding: 11px; font-size: 16px; }
