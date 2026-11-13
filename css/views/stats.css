@@ -28,7 +28,8 @@
 .bar-col { min-width: 0; }
 
 .legend-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 18px; }
-.legend-row .track { flex: 1; height: 10px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.legend-row .track { flex: 1; min-width: 0; height: 10px; background: var(--rule); border-radius: 2px; overflow: hidden; }
 .legend-row .fill { height: 100%; background: var(--pen); }
-.legend-row .name { width: 32px; font-weight: 600; }
-.legend-row .count { width: 40px; text-align: right; color: var(--muted); }
+/* 이름·과목 수 칸은 줄어들지 않게 고정 → 막대(track)만 남은 폭을 쓴다 */
+.legend-row .name { flex: 0 0 56px; font-weight: 600; }                     /* "PASS"·"FAIL" 까지 */
+.legend-row .count { flex: 0 0 4.2em; text-align: right; color: var(--muted); white-space: nowrap; } /* "99과목" 한 줄 */

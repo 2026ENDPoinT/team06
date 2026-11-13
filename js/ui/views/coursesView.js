@@ -195,7 +195,7 @@ const CoursesView = {
   /** 성적 칸: 재수강으로 빠진 이전 기록은 R, "-" 로 재수강해 이전 성적을 쓰면 그 성적을 함께 표시 */
   gradeCell(c) {
     if (c.retaken) return `<span class="retake-mark" title="재수강(RETAKE)으로 평가에서 제외">R</span> <small class="muted">(${c.grade})</small>`;
-    if (c.effectiveGrade && c.effectiveGrade !== c.grade) return `${c.grade} <small class="muted">(이전 성적 ${c.effectiveGrade} 적용)</small>`;
+    if (c.pending) return `${c.grade} <small class="muted">(재수강 중 · 이전 학기 성적 ${c.effectiveGrade} 반영)</small>`;
     return c.grade;
   },
 

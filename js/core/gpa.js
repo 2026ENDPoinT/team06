@@ -68,13 +68,15 @@ const GPA = {
   /**
    * 재수강 관계를 풀어서, 각 과목에 아래 두 값을 붙인 복사본을 돌려준다. (원래 순서 유지)
    *  - retaken: 나중에 재수강해서 평가에서 빠지는 이전 기록이면 true (화면에 R 표시)
-   *  - effectiveGrade: 계산에 쓰는 성적. 재수강 성적이 "-" 이면 이전 성적을 그대로 쓴다.
+   *  - pending: 재수강 중이라 아직 성적이 "-" 인 기록이면 true.
+   *             이 기록은 평가(평점·학점)에서 빠지고, 이전 학기 기록이 그 학기에 그대로 반영된다.
+   *  - effectiveGrade: 이 기록까지 이어 봤을 때의 성적. "-" 이면 이전 성적을 그대로 쓴다. (재수강 자격 검사용)
    * 같은 과목명은 학기 순서대로 이어서 본다.
    * @param {Course[]} courses
-   * @returns {(Course & { retaken: boolean, effectiveGrade: string })[]}
+   * @returns {(Course & { retaken: boolean, pending: boolean, effectiveGrade: string })[]}
    */
   resolveRetakes(courses) {
-    const list = (courses ?? []).map((c) => ({ ...c, retaken: false, effectiveGrade: c.grade }));
+    const list = (courses ?? []).map((c) => ({ ...c, retaken: false, pending: false, effectiveGrade: c.grade }));
     const groups = new Map();
     for (const c of list) {
       const key = this.nameKey(c.name);
@@ -83,10 +85,14 @@ const GPA = {
     }
     for (const group of groups.values()) {
       group.sort((a, b) => this.semesterRank(a) - this.semesterRank(b)); // 같은 학기면 입력 순서 유지
+      // 평가에 반영되는 기록 = 성적이 나온 마지막 기록 (하나도 없으면 맨 마지막 기록)
+      let last = group.findLastIndex((c) => c.grade !== this.NO_GRADE);
+      if (last === -1) last = group.length - 1;
       group.forEach((c, i) => {
         const prev = group[i - 1];
         if (prev && c.grade === this.NO_GRADE) c.effectiveGrade = prev.effectiveGrade;
-        c.retaken = i < group.length - 1;
+        c.retaken = i < last;
+        c.pending = i > last; // 그 뒤의 "-" 기록 = 재수강 중
       });
     }
     return list;
@@ -94,7 +100,7 @@ const GPA = {
 
   /** resolveRetakes 를 거친 목록에서 평가에 반영되는 과목만, 계산용 성적으로 바꿔서 */
   effectiveCourses(resolved) {
-    return resolved.filter((c) => !c.retaken).map((c) => ({ ...c, grade: c.effectiveGrade }));
+    return resolved.filter((c) => !c.retaken && !c.pending).map((c) => ({ ...c, grade: c.effectiveGrade }));
   },
 
   /** 소수점 둘째 자리 반올림 (부동소수점 오차 보정) */
