@@ -25,8 +25,7 @@
   border-radius: 6px;
   pointer-events: none;
 }
-.login-stamp { width: clamp(150px, 28%, 320px); color: #e9c87a; filter: drop-shadow(0 1px 0 rgba(0,0,0,.6)); }
-.login-stamp text { font-family: var(--hand); font-size: 34px; fill: currentColor; }
+.login-stamp { width: clamp(150px, 28%, 320px); height: auto; } /* 팀 로고 (연한 갈색) */
 .login-desc { margin: 0 0 12px; font-size: clamp(16px, 2vw, 22px); color: #e9c87a; opacity: .85; text-shadow: 0 1px 0 rgba(0,0,0,.6); }
 .login-btn {
   position: relative;
