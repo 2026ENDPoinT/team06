@@ -29,7 +29,7 @@ body {
     radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.08), transparent 60%),
     repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 2px, transparent 2px 6px),
     var(--desk);
-  padding: 56px 24px 40px;
+  padding: 76px 24px 40px;
 }
 
 :focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
@@ -71,17 +71,28 @@ body {
 .brand-sub { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: .5px; }
 
 /* ── 인덱스 탭 (책 위쪽에 꽂힌 책갈피) ── */
+/* z-index 를 주지 않음: 각 책갈피가 페이지 앞/뒤에 따로 놓여야 하므로 */
 .tabs {
   position: absolute;
-  top: -40px;
+  top: -60px;
   left: 260px;
   display: flex;
   gap: 6px;
-  z-index: 1;
+  /* nav 상자가 z-index:-1 인 책갈피들 위에 깔려 클릭을 가로채므로, 클릭은 책갈피만 받는다 */
+  pointer-events: none;
 }
+.tabs .tab { pointer-events: auto; }
+/*
+ * --drop (tabs.js 의 stackTabs 가 설정): 뒤 페이지일수록 커져서 아래로 내려가고 밑부분이 페이지 뒤에 박힌다.
+ * 한 장당 하강치·최대치는 tabs.js 의 TAB_STEP / TAB_MAX
+ */
 .tab {
+  --drop: 10px;
+  position: relative;
+  z-index: -1; /* 페이지 뒤 */
   display: block;
-  padding: 8px 22px 14px;
+  height: 60px;
+  padding: 8px 22px 0;
   min-width: 108px;
   text-align: center;
   font-size: 16px;
@@ -90,21 +101,56 @@ body {
   border-radius: 8px 8px 0 0;
   border: 1px solid rgba(0,0,0,.15);
   border-bottom: none;
-  transform: translateY(10px);
-  transition: transform .15s;
+  transform: translateY(var(--drop));
+  transition: transform .25s;
 }
 .tab:nth-child(1) { background: var(--tab-1); }
 .tab:nth-child(2) { background: var(--tab-2); }
 .tab:nth-child(3) { background: var(--tab-3); }
-.tab:hover { transform: translateY(4px); }
-.tab.active { transform: translateY(0); font-weight: 700; }
+.tab:hover { transform: translateY(calc(var(--drop) - 6px)); }
+/* 지금 페이지 책갈피만 페이지 앞: 밑 끝이 종이 위로 내려와 드러남 */
+.tab.active { z-index: 1; transform: translateY(12px); font-weight: 700; }
 
 /* 로그인 화면: 노트 종이는 숨기고 가죽 표지만 보이게 */
-body.locked .page { background: none; box-shadow: none; padding: 0; }
-body.locked .page-head,
+/* .cover = 넘어가는 중인 표지 복사본 (로그인 직후엔 body.locked 가 이미 풀려 있음) */
+body.locked .page, .page.cover { background: none; box-shadow: none; padding: 0; display: grid; } /* 표지가 페이지 크기만큼 늘어나도록 */
+body.locked .page-head, .cover .page-head,
 body.locked .tabs,
-body.locked .ribbon { display: none; }
-body.locked .container { padding: 0; }
+body.locked .ribbon, .cover .ribbon { display: none; }
+body.locked .container, .cover .container { padding: 0; display: grid; }
+
+/* ── 페이지 넘김 ─────────────────────────── */
+.book { perspective: 2400px; }
+.page.turning {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 3;
+  transform-origin: left center; /* 책등 */
+  backface-visibility: hidden;
+  pointer-events: none;
+  animation: page-turn .7s ease-in forwards;
+}
+.page.cover.turning { animation-duration: 1s; }
+/* 앞페이지로 갈 때: 지금 페이지는 밑에 깔리고, 넘어가 있던 페이지가 되돌아와 덮는다 */
+.page.under {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.page.returning {
+  z-index: 2;
+  transform-origin: left center;
+  backface-visibility: hidden;
+  animation: page-turn .7s ease-in reverse;
+}
+body.locked .page.returning { animation-duration: 1s; } /* 로그아웃: 표지가 덮임 */
+@keyframes page-turn {
+  to { transform: rotateY(-180deg); filter: brightness(.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page.turning, .page.returning { animation-duration: 1ms; }
+}
 
 /* ── 설정 리본 ───────────────────────────── */
 .ribbon {
@@ -121,9 +167,14 @@ body.locked .container { padding: 0; }
   clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.1);
   z-index: 2;
-  transition: height .2s;
+  transform-origin: top;
+  transform: perspective(600px) rotateX(0);
+  transition: height .2s, transform .5s ease-out, padding-top .5s;
 }
-.ribbon:hover, .ribbon.active { height: 184px; }
+.ribbon:hover { height: 184px; }
+/* 설정 페이지: 리본이 위로 젖혀져 페이지 위쪽으로 펼쳐짐 (위 여백 76px 안에 들어오는 길이) */
+.ribbon.active { height: 64px; padding-top: 12px; transform: perspective(600px) rotateX(180deg); }
+.ribbon.active svg { transform: scaleY(-1); } /* 젖혀져도 아이콘은 똑바로 */
 
 /* ── 레이아웃 ─────────────────────────── */
 .container {
@@ -183,9 +234,10 @@ th { color: var(--muted); font-weight: 400; }
   .page { padding: 0 0 32px 20px; background-position: -48px 0, 0 0, 0 0; }
   .page-head { margin-right: 16px; padding-right: 72px; }
   .container { padding-right: 16px; }
-  .tabs { left: 12px; top: -38px; }
-  .tab { min-width: 0; padding: 8px 12px 14px; font-size: 14px; }
+  .tabs { left: 12px; }
+  .tab { min-width: 0; padding: 8px 12px 0; font-size: 14px; }
   .ribbon { right: 16px; width: 48px; height: 120px; padding-top: 48px; }
-  .ribbon:hover, .ribbon.active { height: 132px; }
+  .ribbon:hover { height: 132px; }
+  .ribbon.active { height: 56px; padding-top: 8px; }
   .grid-2 { grid-template-columns: 1fr; }
 }
