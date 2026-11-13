@@ -1,6 +1,20 @@
 # team06
 ENDPoinT 해커톤 2026 Team 06 — 성적 관리 웹 애플리케이션
 
+
+git add .
+git commit -m "수정 내용"
+git push -u origin [브랜치 이름]
+
+
+깃허브에서 병합하기.
+
+
+git pull origin main
+
+
+
+
 ## 기술 결정
 - 순수 HTML / CSS / JavaScript (빌드 도구 없음)
 - 데이터 저장: **LocalStorage** (키: `team06.courses`, 값: Course 배열을 JSON 문자열로 저장)
