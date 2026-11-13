@@ -180,6 +180,52 @@ const GPA = {
       });
   },
 
+  /** 졸업 이수 학점 (목표 GPA 시뮬레이터 기준) */
+  GRADUATION_CREDITS: 130,
+
+  /**
+   * 목표 GPA 시뮬레이션: 졸업까지 남은 학점에서 평균 몇 점을 받아야 목표 평점에 닿는지 계산한다.
+   * - 이미 받은 평점 과목(A+~F)과 PASS 과목은 이수한 것으로 본다.
+   * - 성적 미입력("-") 과목은 아직 성적이 없으므로 남은 학점에 포함된다.
+   * - 남은 학점은 모두 평점 과목(A+~F)으로 듣는다고 가정한다.
+   * @param {Course[]} courses
+   * @param {number} target 목표 평점 (0 ~ 4.5)
+   * @returns {{ status: "achieved"|"possible"|"impossible", currentGpa: number|null, earned: number,
+   *             remaining: number, required: number|null, maxGpa: number|null }}
+   *   required: 남은 학점에서 필요한 평균 평점 (소수 둘째 자리 올림, 남은 학점이 없으면 null)
+   *   maxGpa: 남은 학점을 모두 A+ 로 받았을 때의 최종 평점
+   */
+  simulateTarget(courses, target, graduation = this.GRADUATION_CREDITS) {
+    const eff = this.effectiveCourses(this.resolveRetakes(courses));
+    let graded = 0, points = 0, passed = 0;
+    for (const c of eff) {
+      if (this.isCountable(c)) {
+        graded += Number(c.credits);
+        points += Number(c.credits) * this.GRADE_POINTS[c.grade];
+      } else if (this.hasCredits(c) && c.grade === "PASS") {
+        passed += Number(c.credits);
+      }
+    }
+    const currentGpa = graded ? this.round2(points / graded) : null;
+    const earned = graded + passed;
+    const remaining = Math.max(0, graduation - earned);
+    const max = this.GRADE_POINTS["A+"];
+
+    let required = null, maxGpa = currentGpa;
+    if (remaining > 0) {
+      const raw = (target * (graded + remaining) - points) / remaining;
+      required = Math.ceil(raw * 100 - 1e-9) / 100; // 올림: 이 값 이상이면 목표 달성
+      maxGpa = this.round2((points + max * remaining) / (graded + remaining));
+    }
+
+    let status;
+    if (currentGpa != null && currentGpa >= target) status = "achieved";
+    else if (required == null || required > max) status = "impossible";
+    else status = "possible";
+
+    return { status, currentGpa, earned, remaining, required, maxGpa };
+  },
+
   /**
    * 등급별 과목 수 (성적 분석 탭의 분포 그래프용, 재수강 이전 기록 제외)
    * @param {Course[]} courses

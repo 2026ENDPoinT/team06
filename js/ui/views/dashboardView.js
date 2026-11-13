@@ -1,6 +1,6 @@
 /**
  * [담당: 프론트엔드] 탭 1 — 메인
- * 인사말, 주요 지표 3칸, 학기별 평점 그래프, 총 평점 + 한마디, AI 조언 자리,
+ * 인사말, 주요 지표 3칸, 학기별 평점 그래프, 총 평점 + 한마디, 목표 GPA 시뮬레이터,
  * 성적 등급 분포(원형), 지난 나로부터의 메세지(읽기 전용)
  */
 const DashboardView = {
@@ -10,58 +10,85 @@ const DashboardView = {
   NICKNAME: "닉네임",
   NICKNAME_MAX: 20,
 
-  adviceKey(courses) {
-    return JSON.stringify([CourseService.uid, CourseService.generation, courses]);
+  /** 목표 평점은 계정(또는 게스트)별로 이 브라우저에 저장 */
+  targetKey() {
+    return `team06.targetGpa.${CourseService.uid || "guest"}`;
   },
 
-  adviceState(courses) {
-    const key = this.adviceKey(courses);
-    if (this.aiAdvice?.key !== key) this.aiAdvice = { key, text: "", error: "", busy: false };
-    return this.aiAdvice;
-  },
-
-  adviceHtml(courses) {
-    const state = this.adviceState(courses);
-    const disabled = state.busy || !courses.length || CourseService.loading || CourseService.loadError || CourseService.saving || !FirebaseAuth.ready || !FirebaseAuth.app;
-    return `
-      <div class="label">AI 조언</div>
-      <p data-advice-result role="status" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere" class="${state.error ? "error" : ""}">${UI.escape(state.busy ? state.progress || "성적을 분석하고 있어요…" : state.error || state.text || (courses.length ? "성적 흐름을 살펴보고 다음 학기 학습 계획을 제안해요." : "과목을 등록하면 AI 조언을 받을 수 있어요."))}</p>
-      <p class="muted"><small>버튼을 누르면 GPA·학점·등급·학기별 요약을 Gemini에 전송해요. AI 답변은 참고용이에요.</small></p>
-      <button type="button" class="btn" data-ai-advice ${disabled ? "disabled" : ""}>${state.busy ? "생성 중…" : state.text || state.error ? "다시 요청" : "AI 조언 받기"}</button>`;
-  },
-
-  refreshAdvice() {
-    const bubble = this.el().querySelector(".advice-bubble");
-    if (!bubble) return;
-    bubble.innerHTML = this.adviceHtml(CourseService.getAll());
-    bubble.querySelector("[data-ai-advice]").addEventListener("click", () => this.requestAdvice());
-  },
-
-  async requestAdvice() {
-    const courses = CourseService.getAll();
-    const state = this.adviceState(courses);
-    if (state.busy || !courses.length || !FirebaseAuth.ready || !FirebaseAuth.app) return;
+  savedTarget() {
     try {
-      CourseService.assertReady();
-      state.busy = true;
-      state.error = "";
-      this.refreshAdvice();
-      const text = await FirebaseAuth.generateAdvice(courses, {
-        isCurrent: () => this.aiAdvice === state && this.adviceKey(CourseService.getAll()) === state.key,
-        onProgress: (message) => {
-          if (this.aiAdvice !== state || this.adviceKey(CourseService.getAll()) !== state.key) return;
-          state.progress = message;
-          this.refreshAdvice();
-        },
-      });
-      if (this.aiAdvice !== state || this.adviceKey(CourseService.getAll()) !== state.key) return;
-      state.text = text;
-    } catch (error) {
-      if (this.aiAdvice === state && this.adviceKey(CourseService.getAll()) === state.key) state.error = FirebaseAuth.adviceError(error);
-    } finally {
-      state.busy = false;
-      this.refreshAdvice();
+      return localStorage.getItem(this.targetKey()) ?? "";
+    } catch {
+      return "";
     }
+  },
+
+  saveTarget(value) {
+    try {
+      if (value) localStorage.setItem(this.targetKey(), value);
+      else localStorage.removeItem(this.targetKey());
+    } catch { /* 저장 실패해도 계산은 그대로 */ }
+  },
+
+  /** 평균 평점에 해당하는 등급 (그 평점 이상인 가장 낮은 등급) */
+  gradeFor(points) {
+    const entries = Object.entries(GPA.GRADE_POINTS).sort((a, b) => a[1] - b[1]);
+    return entries.find(([, p]) => p >= points)?.[0] ?? "A+";
+  },
+
+  /** 목표 GPA 시뮬레이터 결과 문구 (HTML) */
+  targetResultHtml(raw) {
+    const text = String(raw ?? "").trim();
+    if (!text) return `<p class="muted">목표 평점을 입력하면 졸업(${GPA.GRADUATION_CREDITS}학점)까지 받아야 할 평균 평점을 알려드려요.</p>`;
+    const target = Number(text);
+    if (!Number.isFinite(target) || target < 0 || target > 4.5) {
+      return `<p class="error">목표 평점은 0.00 ~ 4.50 사이로 입력해 주세요.</p>`;
+    }
+
+    const r = GPA.simulateTarget(CourseService.getAll(), target);
+    const fmt = (n) => n.toFixed(2);
+
+    let body;
+    if (r.status === "achieved") {
+      const keep = r.required == null ? ""
+        : r.required <= 0 ? " 남은 학점을 어떻게 받아도 목표 이상을 지킬 수 있어요."
+        : ` 남은 ${r.remaining}학점에서 평균 ${fmt(r.required)} 이상이면 그대로 유지돼요.`;
+      body = `<p class="goal-msg">🎉 이미 목표를 달성했어요! 지금 페이스 그대로 가면 돼요.</p>
+        <p>현재 평점이 목표 ${fmt(target)} 이상이에요.${keep}</p>`;
+    } else if (r.status === "impossible") {
+      const reason = r.remaining > 0
+        ? `남은 ${r.remaining}학점을 모두 A+로 받아도 최종 평점은 ${fmt(r.maxGpa)}까지만 오를 수 있어요.`
+        : "졸업 학점을 이미 모두 채워서 평점을 더 올리기 어려워요.";
+      const hint = r.remaining > 0 ? `${fmt(r.maxGpa)} 이하의 ` : "";
+      body = `<p class="goal-msg">지금까지 정말 열심히 달려왔어요. 숫자가 전부는 아니니 너무 낙심하지 마세요.</p>
+        <p>${reason}</p>
+        <p><strong>${hint}조금 더 낮은 목표를 입력해 보세요.</strong></p>`;
+    } else {
+      body = `<p>남은 <strong>${r.remaining}학점</strong>에서 평균 <strong class="goal-need">${fmt(Math.max(0, r.required))}</strong> 이상
+        (대략 <strong>${this.gradeFor(r.required)}</strong> 수준)을 받으면 목표 ${fmt(target)}에 도달해요.</p>`;
+    }
+    return body;
+  },
+
+  targetHtml() {
+    const saved = this.savedTarget();
+    return `
+      <div class="label">목표 GPA 시뮬레이터</div>
+      <label class="goal-input">목표 평점
+        <input type="number" inputmode="decimal" min="0" max="4.5" step="0.01" placeholder="예) 3.80" value="${UI.escape(saved)}" data-target-gpa />
+        <span class="muted">/ 4.5</span>
+      </label>
+      <div data-target-result role="status" aria-live="polite">${this.targetResultHtml(saved)}</div>`;
+  },
+
+  bindTarget() {
+    const bubble = this.el().querySelector(".advice-bubble");
+    const input = bubble?.querySelector("[data-target-gpa]");
+    if (!input) return;
+    input.addEventListener("input", () => {
+      this.saveTarget(input.value.trim());
+      bubble.querySelector("[data-target-result]").innerHTML = this.targetResultHtml(input.value);
+    });
   },
 
   /** 설정에서 바꾼 닉네임은 계정(또는 게스트)별로 이 브라우저에 저장 */
@@ -188,7 +215,7 @@ const DashboardView = {
         <div class="advisor">
           ${this.robot()}
           <div class="advice-bubble">
-            ${this.adviceHtml(courses)}
+            ${this.targetHtml()}
           </div>
         </div>
 
@@ -214,7 +241,7 @@ const DashboardView = {
       </dialog>
     `;
 
-    this.refreshAdvice();
+    this.bindTarget();
     const dialog = this.el().querySelector(".future-dialog");
     this.el().querySelector(".send-future").addEventListener("click", () => dialog.showModal());
     dialog.querySelector("form").addEventListener("submit", (e) => {
@@ -275,7 +302,7 @@ const DashboardView = {
       </div>`;
   },
 
-  /** AI 조언 캐릭터 (임시 그림) */
+  /** 목표 GPA 시뮬레이터 옆 캐릭터 (임시 그림) */
   robot() {
     return `
       <svg class="robot" viewBox="0 0 100 150" aria-hidden="true">
