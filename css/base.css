@@ -149,8 +149,26 @@ body.locked .container, .cover .container { padding: 0; display: grid; }
 }
 body.locked .page.returning { animation-duration: 1s; } /* 로그아웃: 표지가 덮임 */
 @keyframes page-turn {
-  to { transform: rotateY(-180deg); filter: brightness(.6); }
+  to { transform: rotateY(-180deg); }
 }
+/*
+ * 넘어가는 페이지의 뒷면: 90° 를 넘기면 앞면 대신 뒷면이 보여서 끝(180°)까지 넘김이 이어진다.
+ * (filter 는 3D 를 납작하게 만들어서 못 씀 → 어두워지는 연출은 뒷면 그늘로 대신)
+ */
+.page.turning, .page.returning { transform-style: preserve-3d; }
+.page.turning > :not(.tab), .page.returning > :not(.tab) { backface-visibility: hidden; } /* 책갈피는 뒷면도 보임 */
+.page.turning::after, .page.returning::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(270deg, rgba(0,0,0,.25), transparent 35%), var(--paper-edge); /* 책등 쪽 그늘 */
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+}
+/* 표지의 안쪽 면 */
+.page.cover.turning::after,
+body.locked .page.returning::after { background: linear-gradient(270deg, rgba(0,0,0,.35), transparent 35%), #4a2a14; }
 @media (prefers-reduced-motion: reduce) {
   .page.turning, .page.returning { animation-duration: 1ms; }
 }

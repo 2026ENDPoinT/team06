@@ -9,7 +9,7 @@ const DashboardView = {
   // TODO: 설정 화면에서 닉네임을 저장하게 되면 그 값으로 교체
   NICKNAME: "닉네임",
 
-  // TODO: 메세지를 작성하는 화면(설정 등)에서 이 키로 저장하면 메인에 그대로 뜬다. 메인에서는 읽기만 한다.
+  // "미래의 나에게 메세지 보내기" 팝업에서 저장 → "지난 나로부터의 메세지" 칸에 뜬다 (칸 자체는 읽기 전용)
   PAST_MESSAGE_KEY: "team06.pastMessage",
 
   GRADE_COLORS: {
@@ -40,7 +40,9 @@ const DashboardView = {
     const semesters = GPA.summarizeBySemester(courses);
     const latest = semesters[semesters.length - 1];
 
-    const points = semesters.map((s) => ({ label: this.shortLabel(s.semesterKey), gpa: s.gpa }));
+    const points = semesters
+      .filter((s) => !/-(summer|winter)$/.test(s.semesterKey)) // 계절학기는 그래프에서 제외
+      .map((s) => ({ label: this.shortLabel(s.semesterKey), gpa: s.gpa }));
 
     const grades = GPA.gradeDistribution(courses);
     const pastMessage = localStorage.getItem(this.PAST_MESSAGE_KEY);
@@ -88,12 +90,35 @@ const DashboardView = {
           </div>
         </div>
 
-        <div class="past-message">
-          <div class="label">지난 나로부터의 메세지</div>
-          <p class="${pastMessage ? "" : "muted"}">${pastMessage ? UI.escape(pastMessage) : "아직 남겨둔 메세지가 없어요."}</p>
+        <div class="past-wrap">
+          <div class="past-message">
+            <div class="label">지난 나로부터의 메세지</div>
+            <p class="${pastMessage ? "" : "muted"}">${pastMessage ? UI.escape(pastMessage) : "아직 남겨둔 메세지가 없어요."}</p>
+          </div>
+          <button type="button" class="send-future">미래의 나에게 메세지 보내기</button>
         </div>
       </div>
+
+      <dialog class="future-dialog" aria-labelledby="future-title">
+        <form method="dialog">
+          <h2 id="future-title">미래의 나에게</h2>
+          <textarea name="message" rows="6" maxlength="300" required
+                    placeholder="다음 학기의 나에게 하고 싶은 말을 적어 주세요.">${UI.escape(pastMessage ?? "")}</textarea>
+          <div class="future-actions">
+            <button class="btn" value="cancel" formnovalidate>취소</button>
+            <button class="btn primary" value="ok">확인</button>
+          </div>
+        </form>
+      </dialog>
     `;
+
+    const dialog = this.el().querySelector(".future-dialog");
+    this.el().querySelector(".send-future").addEventListener("click", () => dialog.showModal());
+    dialog.querySelector("form").addEventListener("submit", (e) => {
+      if (e.submitter?.value !== "ok") return; // 취소: 저장 없이 닫힘
+      localStorage.setItem(this.PAST_MESSAGE_KEY, dialog.querySelector("textarea").value.trim());
+      this.render();
+    });
   },
 
   /** 학기별 평점 꺾은선 그래프 (SVG, 0 ~ 4.5) */
