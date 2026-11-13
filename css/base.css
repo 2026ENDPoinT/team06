@@ -108,8 +108,11 @@ body {
 .tab:nth-child(2) { background: var(--tab-2); }
 .tab:nth-child(3) { background: var(--tab-3); }
 .tab:hover { transform: translateY(calc(var(--drop) - 6px)); }
-/* 지금 페이지 책갈피만 페이지 앞: 밑 끝이 종이 위로 내려와 드러남 */
-.tab.active { z-index: 1; transform: translateY(12px); font-weight: 700; }
+/*
+ * 지금 페이지 책갈피만 페이지 앞.
+ * 다른 책갈피(최소 2px 하강)보다 6px 높이 솟고, 길이를 늘려 밑 끝은 종이 위로 12px 내려와 드러남
+ */
+.tab.active { z-index: 1; transform: translateY(-6px); height: 78px; font-weight: 700; }
 
 /* 로그인 화면: 노트 종이는 숨기고 가죽 표지만 보이게 */
 /* .cover = 넘어가는 중인 표지 복사본 (로그인 직후엔 body.locked 가 이미 풀려 있음) */
