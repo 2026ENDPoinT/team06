@@ -6,8 +6,57 @@
 const DashboardView = {
   el: () => document.getElementById("view-dashboard"),
 
-  // TODO: 설정 화면에서 닉네임을 저장하게 되면 그 값으로 교체
+  // 기본 닉네임 (app.js 가 Google 계정 이름 또는 "게스트"로 정함)
   NICKNAME: "닉네임",
+  NICKNAME_MAX: 20,
+
+  /** 설정에서 바꾼 닉네임은 계정(또는 게스트)별로 이 브라우저에 저장 */
+  nicknameKey() {
+    return `team06.nickname.${CourseService.uid || "guest"}`;
+  },
+
+  /** 화면에 쓸 닉네임: 직접 정한 이름이 있으면 그것, 없으면 기본 닉네임 */
+  nickname() {
+    try {
+      return localStorage.getItem(this.nicknameKey())?.trim() || this.NICKNAME;
+    } catch {
+      return this.NICKNAME;
+    }
+  },
+
+  /** 직접 정한 닉네임만 (기본값을 쓰는 중이면 null) — JSON 백업용 */
+  customNickname() {
+    const name = this.nickname();
+    return name === this.NICKNAME ? null : name;
+  },
+
+  /** 지난 나로부터의 메세지 (없으면 null) */
+  pastMessage() {
+    try {
+      return localStorage.getItem(this.PAST_MESSAGE_KEY) || null;
+    } catch {
+      return null;
+    }
+  },
+
+  /** 빈 값이면 메세지를 지운다. 저장 실패 시 예외 */
+  savePastMessage(text) {
+    const value = String(text ?? "").trim();
+    if (value) localStorage.setItem(this.PAST_MESSAGE_KEY, value);
+    else localStorage.removeItem(this.PAST_MESSAGE_KEY);
+  },
+
+  /** 빈 값이면 기본 닉네임으로 되돌린다. @returns {boolean} 저장 성공 여부 */
+  saveNickname(name) {
+    const value = String(name ?? "").trim().slice(0, this.NICKNAME_MAX);
+    try {
+      if (value && value !== this.NICKNAME) localStorage.setItem(this.nicknameKey(), value);
+      else localStorage.removeItem(this.nicknameKey());
+      return true;
+    } catch {
+      return false;
+    }
+  },
 
   // "미래의 나에게 메세지 보내기" 팝업에서 저장 → "지난 나로부터의 메세지" 칸에 뜬다 (칸 자체는 읽기 전용)
   PAST_MESSAGE_KEY: "team06.pastMessage",
@@ -45,10 +94,10 @@ const DashboardView = {
       .map((s) => ({ label: this.shortLabel(s.semesterKey), gpa: s.gpa }));
 
     const grades = GPA.gradeDistribution(courses);
-    const pastMessage = localStorage.getItem(this.PAST_MESSAGE_KEY);
+    const pastMessage = this.pastMessage();
 
     this.el().innerHTML = `
-      <h1 class="greeting"><span class="nickname">${UI.escape(this.NICKNAME)}</span>님의 성적은 이래왔어요</h1>
+      <h1 class="greeting"><span class="nickname">${UI.escape(this.nickname())}</span>님의 성적은 이래왔어요</h1>
 
       <div class="dash-row">
         <div class="kpi-grid">
@@ -116,7 +165,11 @@ const DashboardView = {
     this.el().querySelector(".send-future").addEventListener("click", () => dialog.showModal());
     dialog.querySelector("form").addEventListener("submit", (e) => {
       if (e.submitter?.value !== "ok") return; // 취소: 저장 없이 닫힘
-      localStorage.setItem(this.PAST_MESSAGE_KEY, dialog.querySelector("textarea").value.trim());
+      try {
+        this.savePastMessage(dialog.querySelector("textarea").value);
+      } catch {
+        alert("메세지를 저장하지 못했어요.");
+      }
       this.render();
     });
   },

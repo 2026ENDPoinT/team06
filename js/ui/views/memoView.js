@@ -37,6 +37,11 @@ const MemoView = {
     }
   },
 
+  /** 메모 전체를 교체한다 (JSON 불러오기용). 저장 실패 시 예외 */
+  replaceMemos(memos) {
+    localStorage.setItem(this.key(), JSON.stringify(memos ?? {}));
+  },
+
   /** 최근 학기가 위로 오도록 정렬 */
   sortedCourses() {
     return CourseService.getAll().sort((a, b) =>

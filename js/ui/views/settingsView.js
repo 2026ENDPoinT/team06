@@ -13,11 +13,14 @@ const SettingsView = {
       <div class="card settings-row">
         <div>
           <h2>닉네임</h2>
-          <p class="muted">${LoginView.isGuest() ? "게스트로 이용 중이에요." : "Google 계정 이름을 사용해요. 메인 화면 인사말에도 표시돼요."}</p>
+          <p class="muted">메인 화면 인사말에 표시돼요. 비워 두고 저장하면 기본값(${UI.escape(DashboardView.NICKNAME)})으로 돌아가요.</p>
+          <p class="muted" data-nick-status role="status" aria-live="polite"></p>
         </div>
-        <div class="settings-control">
-          <input type="text" value="${UI.escape(DashboardView.NICKNAME)}" disabled />
-        </div>
+        <form class="settings-control" data-nick-form>
+          <input type="text" name="nickname" maxlength="${DashboardView.NICKNAME_MAX}" aria-label="닉네임"
+                 value="${UI.escape(DashboardView.nickname())}" placeholder="${UI.escape(DashboardView.NICKNAME)}" />
+          <button class="btn" type="submit">저장</button>
+        </form>
       </div>
 
       <div class="card settings-row">
@@ -33,7 +36,7 @@ const SettingsView = {
       <div class="card settings-row">
         <div>
           <h2>데이터 내보내기</h2>
-          <p class="muted">JSON은 백업·복원용, Excel XML은 엑셀에서 열어 보는 표예요.</p>
+          <p class="muted">JSON은 백업·복원용(닉네임·지난 나로부터의 메세지·과목/성적·메모 모두 포함), Excel XML은 엑셀에서 열어 보는 과목 표예요.</p>
         </div>
         <div class="settings-control">
           <button class="btn" data-action="export-json">JSON 저장</button>
@@ -44,7 +47,7 @@ const SettingsView = {
       <div class="card settings-row">
         <div>
           <h2>데이터 불러오기</h2>
-          <p class="muted">JSON 백업 파일로 현재 과목 전체를 교체해요. 필요한 기록은 먼저 내보내세요.</p>
+          <p class="muted">JSON 백업 파일로 닉네임·메세지·과목/성적·메모를 모두 교체해요. 필요한 기록은 먼저 내보내세요.</p>
         </div>
         <div class="settings-control">
           <button class="btn" data-action="import">JSON 불러오기</button>
@@ -77,6 +80,19 @@ const SettingsView = {
       }
     });
     this.bindDataEvents();
+    this.bindNickname();
+  },
+
+  bindNickname() {
+    const form = this.el().querySelector("[data-nick-form]");
+    const status = this.el().querySelector("[data-nick-status]");
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const ok = DashboardView.saveNickname(form.nickname.value);
+      form.nickname.value = DashboardView.nickname();
+      status.textContent = ok ? `닉네임을 "${DashboardView.nickname()}"(으)로 저장했어요.` : "닉네임을 저장하지 못했어요.";
+      status.classList.toggle("error", !ok);
+    });
   },
 
   showStatus(message, error = false) {
@@ -91,6 +107,30 @@ const SettingsView = {
     CoursesView.editingId = null;
     CoursesView.adding = false;
     CoursesView.notice = "";
+  },
+
+  /** 흩어져 있는 데이터를 모아 JSON 백업 문자열로 (형식: js/core/backup.js) */
+  exportBackup() {
+    CourseService.assertReady();
+    return Backup.build({
+      nickname: DashboardView.customNickname(),
+      pastMessage: DashboardView.pastMessage(),
+      courses: CourseService.getAll(),
+      memos: MemoView.loadMemos(),
+    });
+  },
+
+  /** 과목 저장이 끝난 뒤 닉네임·메세지·메모를 이 브라우저에 저장. 실패하면 예외 */
+  applyBackupExtras({ nickname, pastMessage, memos }) {
+    try {
+      if (!DashboardView.saveNickname(nickname ?? "")) throw new Error();
+      DashboardView.savePastMessage(pastMessage);
+      MemoView.replaceMemos(memos);
+    } catch {
+      throw new Error("과목은 불러왔지만 닉네임·메세지·메모를 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요.");
+    }
+    const input = this.el().querySelector("[data-nick-form] [name=nickname]");
+    if (input) input.value = DashboardView.nickname();
   },
 
   download(content, extension, type) {
@@ -127,7 +167,7 @@ const SettingsView = {
               this.showStatus("과목과 성적을 모두 초기화했습니다.");
               break;
             case "export-json":
-              this.download(CourseService.exportJSON(), "json", "application/json;charset=utf-8");
+              this.download(this.exportBackup(), "json", "application/json;charset=utf-8");
               this.showStatus("JSON 백업 파일 다운로드를 시작했습니다.");
               break;
             case "export-excel":
@@ -154,12 +194,19 @@ const SettingsView = {
       try {
         const text = await file.text();
         if (generation !== CourseService.generation) return;
-        if (!confirm("JSON 파일의 과목으로 현재 과목 전체를 교체할까요? 기존 기록은 먼저 백업하는 것을 권장합니다.")) return;
-        this.showStatus("과목을 불러와 저장하는 중입니다…");
-        const count = await CourseService.importJSON(text);
+        const backup = Backup.parse(text); // 저장하기 전에 파일 전체를 검증
+        const what = backup.legacy ? "과목 전체를" : "닉네임·메세지·과목/성적·메모를 모두";
+        if (!confirm(`JSON 파일의 내용으로 현재 ${what} 교체할까요? 기존 기록은 먼저 백업하는 것을 권장합니다.`)) return;
+        this.showStatus("불러와 저장하는 중입니다…");
+        const count = await CourseService.importCourses(backup.courses);
         if (generation !== CourseService.generation) return;
         this.resetCourseView();
-        this.showStatus(`${count}개 과목을 불러와 저장했습니다.`);
+        if (backup.legacy) {
+          this.showStatus(`${count}개 과목을 불러와 저장했습니다. (예전 형식 파일이라 닉네임·메세지·메모는 그대로 둡니다)`);
+          return;
+        }
+        this.applyBackupExtras(backup);
+        this.showStatus(`${count}개 과목과 메모 ${Object.keys(backup.memos).length}개, 닉네임·메세지를 불러와 저장했습니다.`);
       } catch (error) {
         if (generation === CourseService.generation) this.showStatus(error.message || "파일을 불러오지 못했습니다.", true);
       } finally {
