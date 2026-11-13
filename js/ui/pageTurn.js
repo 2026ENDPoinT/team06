@@ -18,7 +18,10 @@
  *        · 뒤 페이지 깊이 = 1, 2 …
  *        · 이미 넘긴 앞페이지 = 뒷페이지들보다 더 뒤, 그중에서도 앞페이지일수록 더 아래
  *    - 아무리 내려가도 제목은 보이도록 TAB_MAX 로 제한.
- *      예) 성적 분석에 있을 때: 성적 분석(앞) > 과목·성적(18px) > 메인(26px)
+ *      맨 깊은 책갈피(메인, 깊이 4 → 34px)도 TAB_MAX 안이라 깊이마다 높이가 전부 다르다.
+ *      예) 메모에 있을 때: 메모(앞) > 성적 분석(18px) > 과목·성적(26px) > 메인(34px)
+ *      페이지를 더 늘려 2 + (페이지 수 − 1) × TAB_STEP 이 TAB_MAX 를 넘으면 다시 겹친다.
+ *      → 책갈피 길이(css .tab height, .tabs top, .tab.active height)와 TAB_MAX 를 같이 늘릴 것
  *
  * 3. 넘김 (turn) — 2D 페이지 컬. 3D 회전 없이 종이가 접히는 선만 계산한다.
  *    오른쪽 아래 귀퉁이를 잡아 책등(왼쪽) 너머로 끌고 가는 모양:
@@ -55,9 +58,9 @@ const PageTurn = {
   /** 페이지 순서 (앞 → 뒤). 여기 없는 화면(로그인)은 맨 앞(-1) */
   ORDER: ["dashboard", "courses", "stats", "memo", "settings"],
 
-  /** 책갈피가 한 장 뒤일수록 내려가는 px, 최대치 (책갈피 60px − 제목 아래 끝 ~32px) */
+  /** 책갈피가 한 장 뒤일수록 내려가는 px, 최대치 (책갈피 72px − 제목 아래 끝 ~32px) */
   TAB_STEP: 8,
-  TAB_MAX: 26,
+  TAB_MAX: 40,
 
   /** 넘김 시간(ms), 앞페이지 책갈피가 가라앉는 시간(ms), 귀퉁이가 들리는 높이(페이지 너비 대비) */
   DUR: 500,
@@ -110,7 +113,7 @@ const PageTurn = {
     const W = moving.offsetWidth;
     const H = moving.offsetHeight;
     const lift = Math.min(W * this.LIFT, 160);
-    const top = lift + 80; // 캔버스 위쪽 여유: 들린 귀퉁이 + 책갈피
+    const top = lift + 90; // 캔버스 위쪽 여유: 들린 귀퉁이 + 책갈피
     const canvas = document.createElement("canvas");
     canvas.className = "page-flap";
     // ponytail: 캔버스는 1배율(고해상도 화면에선 뒷면 가장자리가 살짝 부드러움). 거슬리면 devicePixelRatio 곱하기
@@ -229,7 +232,7 @@ const PageTurn = {
       run(this.DUR, (t) => draw(ease(t)), () => {
         this.finish();
         // 넘어간 페이지들의 책갈피가 페이지 뒤에서 제자리로 올라온다
-        tabs.forEach((tab) => tab.animate([{ transform: "translateY(70px)" }, {}], { duration: 350, easing: "ease-out" }));
+        tabs.forEach((tab) => tab.animate([{ transform: "translateY(80px)" }, {}], { duration: 350, easing: "ease-out" }));
       });
       return;
     }
@@ -240,7 +243,7 @@ const PageTurn = {
     tabOf(prev)?.classList.add("active"); // 덮일 때까지는 이전 페이지 책갈피가 앞에 있음
     sinking = tabs.map((tab) =>
       tab.animate(
-        [{ transform: `translateY(${this.drop(this.ORDER.indexOf(tab.dataset.tab), from)}px)` }, { transform: "translateY(70px)" }],
+        [{ transform: `translateY(${this.drop(this.ORDER.indexOf(tab.dataset.tab), from)}px)` }, { transform: "translateY(80px)" }],
         { duration: this.SINK, easing: "ease-in", fill: "forwards" }
       )
     );
