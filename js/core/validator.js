@@ -65,4 +65,54 @@ const Validator = {
 
     return { ok: errors.length === 0, errors };
   },
+
+  /**
+   * 재수강 규칙 검증. 같은 이름의 과목을 학기 순서로 이은 "수강 이력" 전체를,
+   * 이번 추가/수정을 반영한 상태로 검사한다. (앞 학기·뒤 학기 어느 쪽을 고쳐도 걸러진다)
+   *  - 재수강 전 성적은 C+ 이하여야 함 (재수강된 기록을 B0 이상으로 고칠 수도 없음)
+   *  - 재수강 성적은 A0 까지 (A+ 불가)
+   *  - 같은 학기에 같은 이름의 과목은 하나만
+   *  - 이어진 과목끼리 학점 수, 성적 유형(등급제 / PASS·FAIL)이 같아야 함 ("-" 는 어느 유형과도 맞음)
+   * @param {{ name: string, year: number|string, semester: string, grade: string }} input
+   * @param {Course[]} courses 이미 등록된 전체 과목
+   * @param {string|null} excludeId 수정 중인 과목 id
+   * @returns {{ ok: boolean, errors: string[], previous: Course|null }} previous: 바로 앞 수강 기록 (재수강이 아니면 null)
+   */
+  validateRetake(input, courses, excludeId = null) {
+    const errors = [];
+    const add = (msg) => { if (!errors.includes(msg)) errors.push(msg); };
+    const key = GPA.nameKey(input.name);
+    const same = (courses ?? []).filter((c) => c.id !== excludeId && GPA.nameKey(c.name) === key);
+
+    if (same.some((c) => GPA.semesterRank(c) === GPA.semesterRank(input))) {
+      add("같은 학기에 같은 이름의 과목이 이미 있습니다.");
+    }
+
+    const draftId = excludeId ?? "__draft__";
+    const chain = GPA.resolveRetakes([...same, { ...input, id: draftId }])
+      .sort((a, b) => GPA.semesterRank(a) - GPA.semesterRank(b));
+
+    // 재수강으로 이어진 과목끼리는 학점 수와 성적 유형(등급제 / PASS·FAIL)이 같아야 한다
+    if (chain.length > 1) {
+      if (new Set(chain.map((c) => Number(c.credits))).size > 1) {
+        add("재수강으로 이어진 과목은 학점 수가 같아야 합니다.");
+      }
+      const types = new Set(chain.map((c) => GPA.gradeType(c.grade)).filter(Boolean));
+      if (types.size > 1) {
+        add("재수강으로 이어진 과목은 성적 유형(등급제 / PASS·FAIL)이 같아야 합니다.");
+      }
+    }
+
+    for (let i = 1; i < chain.length; i++) {
+      if (!GPA.RETAKE_ELIGIBLE_GRADES.includes(chain[i - 1].effectiveGrade)) {
+        add("성적이 C+ 이하인 과목만 재수강 할 수 있습니다.");
+      }
+      if (GPA.RETAKE_FORBIDDEN_GRADES.includes(chain[i].grade)) {
+        add("재수강한 과목의 성적은 A 이하여야 합니다");
+      }
+    }
+
+    const index = chain.findIndex((c) => c.id === draftId);
+    return { ok: errors.length === 0, errors, previous: chain[index - 1] ?? null };
+  },
 };
