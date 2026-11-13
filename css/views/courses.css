@@ -5,9 +5,27 @@
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  border-bottom: 2px solid var(--ink);
+  /* 밑줄을 안쪽 그림자로 그려서, 활성 탭(종이색 배경)이 그 위를 덮어 열린 느낌을 낸다 */
+  box-shadow: inset 0 -2px 0 var(--ink);
 }
-.sem-book { position: relative; }
+/* 학기가 많아지면 줄바꿈 대신 가로 스크롤 (스크롤바는 숨기고 탭 줄을 드래그하거나 마우스 휠로 이동) */
+.sem-tab-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.sem-tab-list::-webkit-scrollbar { display: none; }
+/* 끄는 중에는 잡은 손 모양 + 글자 선택 방지 */
+.sem-tab-list.dragging,
+.sem-tab-list.dragging .sem-tab { cursor: grabbing; user-select: none; }
+/* .view 는 grid → 칸이 탭 전체 너비만큼 늘어나 페이지 밖으로 삐져나가지 않도록 폭을 고정 */
+#view-courses { grid-template-columns: minmax(0, 1fr); }
+.sem-book { position: relative; min-width: 0; }
 .sem-tab {
   font-family: inherit;
   font-size: 15px;
@@ -18,6 +36,9 @@
   border-radius: 6px 6px 0 0;
   padding: 7px 16px;
   cursor: pointer;
+  flex: none;
+  white-space: nowrap;
+  box-shadow: inset 0 -2px 0 var(--ink); /* 회색 배경이 밑줄을 가리지 않도록 탭에도 밑줄 */
 }
 .sem-tab:hover { color: var(--ink); }
 .sem-tab.active {
@@ -26,11 +47,12 @@
   background: var(--paper);
   border: 2px solid var(--ink);
   border-bottom: 2px solid var(--paper);
-  margin-bottom: -2px;
+  box-shadow: none;
   padding: 10px 18px;
 }
 .sem-add {
-  margin-left: auto;
+  flex: none;
+  margin-left: 8px;
   align-self: center;
   width: 34px;
   height: 34px;
@@ -101,7 +123,6 @@ tr.retaken td:not(.actions) { color: var(--muted); }
 td.actions { text-align: right; white-space: nowrap; }
 
 @media (max-width: 720px) {
-  .sem-tabs { overflow-x: auto; }
   .course-form { grid-template-columns: 1fr 1fr; }
   .course-form label:first-of-type,
   .form-actions { grid-column: 1 / -1; }
