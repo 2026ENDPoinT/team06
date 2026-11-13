@@ -60,7 +60,11 @@ body {
     14px 14px 0 0 var(--cover),
     20px 26px 40px rgba(0,0,0,.35);
   padding: 0 0 48px 88px;
+  /* 모든 탭의 페이지 높이를 메인과 같게 고정 (tabs.js 가 height 지정). 넘치는 내용은 .container 안에서 스크롤 */
+  display: flex;
+  flex-direction: column;
 }
+.page-head { flex-shrink: 0; }
 
 /* ── 상단 (로고) ───────────────────────── */
 .page-head {
@@ -174,6 +178,11 @@ body.locked .bookmark { display: none; }
 /* ── 레이아웃 ─────────────────────────── */
 .container {
   padding: 32px 40px 0 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 .view { display: grid; gap: var(--line-h); }
 .view[hidden] { display: none; }

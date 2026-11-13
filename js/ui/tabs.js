@@ -40,7 +40,7 @@ const Tabs = {
 
     this.fit();                        // 노트가 제 너비로 펼쳐진 상태에서 메인 높이를 재고
     this.mainH = this.mainHeight();
-    page.style.minHeight = `${this.mainH}px`;
+    page.style.height = `${this.mainH}px`; // 모든 탭 같은 높이. 더 긴 내용은 .container 안에서 스크롤 (css/base.css)
     this.fit(this.mainH);              // 그 높이까지 한 화면에 들어오도록 배율을 정한다
     for (const key of Object.keys(this.VIEWS)) {
       document.getElementById(`view-${key}`).hidden = key !== name;
@@ -60,15 +60,16 @@ const Tabs = {
       this.VIEWS[name].render();
     }
     window.scrollTo(0, 0);
+    page.querySelector(".container").scrollTop = 0;
     PageTurn.turn(page, oldPage, prev, name);
   },
 
-  /** 모든 페이지가 최소한 메인 화면만큼은 길도록, 메인을 잠깐 그려서 높이를 잰다 */
+  /** 모든 페이지를 메인 화면과 같은 높이로 맞추기 위해, 메인을 잠깐 그려서 높이를 잰다 */
   // ponytail: 창 크기를 바꿀 때는 다시 재지 않고 배율만 다시 정함(fit). 모바일 폭(760px)을 넘나들면 높이가 어긋날 수 있음
   //           → 거슬리면 resize 에서 show() 를 부르되, 입력 중이던 내용이 다시 그려지며 사라지는 것에 주의
   mainHeight() {
     const page = document.getElementById("page");
-    page.style.minHeight = "";
+    page.style.height = "";
     document.body.classList.remove("locked"); // 표지 모양(머리말·여백 없음)인 채로 재면 메인보다 짧게 나온다. show() 가 바로 다시 정함
     for (const key of Object.keys(this.VIEWS)) {
       document.getElementById(`view-${key}`).hidden = key !== "dashboard";

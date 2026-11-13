@@ -9,9 +9,6 @@
 }
 .nickname {
   display: inline-block;
-  border: 2px solid var(--ink);
-  border-radius: 3px;
-  padding: 2px 14px 6px;
   margin-right: 6px;
   line-height: 1;
 }
