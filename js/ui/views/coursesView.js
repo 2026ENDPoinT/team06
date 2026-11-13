@@ -9,7 +9,6 @@ const CoursesView = {
   el: () => document.getElementById("view-courses"),
   // 맨 앞의 "-"(성적 미입력)가 새 과목의 기본 선택값
   GRADES: [GPA.NO_GRADE, ...GPA.ALL_GRADES],
-  SEMESTER_ORDER: { "1": 1, summer: 2, "2": 3, winter: 4 },
 
   selectedKey: null,  // 선택된 학기 탭 ("2026-1")
   editingId: null,    // 수정 중인 과목 id (없으면 null)
@@ -21,7 +20,7 @@ const CoursesView = {
   compareKeys(a, b) {
     const [ya, sa] = a.split("-");
     const [yb, sb] = b.split("-");
-    return ya - yb || this.SEMESTER_ORDER[sa] - this.SEMESTER_ORDER[sb];
+    return ya - yb || GPA.SEMESTER_ORDER[sa] - GPA.SEMESTER_ORDER[sb];
   },
 
   titleOf(key) {

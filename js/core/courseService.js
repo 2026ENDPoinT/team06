@@ -109,12 +109,6 @@ const CourseService = {
     await this.persist([], true);
   },
 
-  /** JSON 백업은 등록된 원본 성적을 그대로 보관한다. */
-  exportJSON() {
-    this.assertReady();
-    return JSON.stringify(this.getAll(), null, 2);
-  },
-
   /** 불러올 과목 배열 전체를 검증하고, 저장할 필드만 남긴 복사본을 돌려준다. 하나라도 틀리면 예외. */
   checkCourses(courses) {
     if (!Array.isArray(courses)) throw new Error("과목 배열 형식의 JSON 파일을 선택해 주세요.");
@@ -124,8 +118,7 @@ const CourseService = {
         throw new Error(`${index + 1}번째 과목 정보가 올바르지 않거나 ID가 중복됩니다.`);
       }
       ids.add(course.id);
-      const { id, name, year, semester, credits, grade } = course;
-      return { id, name, year, semester, credits, grade };
+      return DataStore.pick(course);
     });
   },
 
@@ -136,26 +129,16 @@ const CourseService = {
     return imported.length;
   },
 
-  /** (예전 방식) 과목 배열 JSON 문자열로 교체 */
-  async importJSON(text) {
-    let courses;
-    try {
-      courses = JSON.parse(text.replace(/^\uFEFF/, ""));
-    } catch {
-      throw new Error("올바른 JSON 파일이 아닙니다.");
-    }
-    return this.importCourses(courses);
-  },
-
-  /** 같은 JSON 원본을 Excel에서 열 수 있는 SpreadsheetML(.xml) 표로 변환한다. */
+  /** 등록된 과목을 Excel에서 열 수 있는 SpreadsheetML(.xml) 표로 변환한다. */
   exportExcel() {
-    const courses = JSON.parse(this.exportJSON());
+    this.assertReady();
+    const courses = this.getAll();
     const escape = (value) => String(value)
       .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
     const cell = (value, type = "String") => `<Cell><Data ss:Type="${type}">${escape(value)}</Data></Cell>`;
-    const semesters = { "1": "1학기", summer: "여름학기", "2": "2학기", winter: "겨울학기" };
+    const semesters = GPA.SEMESTER_LABEL;
     courses.sort((a, b) => a.year - b.year || GPA.SEMESTER_ORDER[a.semester] - GPA.SEMESTER_ORDER[b.semester]);
     const rows = courses.map((c) => `<Row>${cell(c.year, "Number")}${cell(semesters[c.semester])}${cell(c.name)}${cell(c.credits, "Number")}${cell(c.grade)}</Row>`).join("");
     return `<?xml version="1.0" encoding="UTF-8"?>

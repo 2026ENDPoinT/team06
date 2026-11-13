@@ -2,11 +2,16 @@
  * [담당: 프론트엔드] 여러 탭에서 같이 쓰는 화면 도우미 함수
  */
 const UI = {
-  SEMESTER_LABEL: { "1": "1학기", "summer": "여름학기", "2": "2학기", "winter": "겨울학기" },
+  SEMESTER_LABEL: GPA.SEMESTER_LABEL,
 
   /** (2026, "1") → "2026년 1학기" */
   semesterTitle(year, semester) {
     return `${year}년 ${this.SEMESTER_LABEL[semester] ?? semester}`;
+  },
+
+  /** 그래프 축용 짧은 이름: (2026, "summer") → "26-여름" */
+  shortSemester(year, semester) {
+    return `${String(year).slice(-2)}-${GPA.SEMESTER_SHORT[semester] ?? semester}`;
   },
 
   /** 3.456 → "3.46", null → "-" */

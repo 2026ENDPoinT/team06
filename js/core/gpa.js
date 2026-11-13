@@ -17,6 +17,12 @@ const GPA = {
   /** 한 해 안에서의 학기 순서 (문자열 정렬하면 "2" < "summer" 가 되어 틀리므로 직접 지정) */
   SEMESTER_ORDER: { "1": 1, "summer": 2, "2": 3, "winter": 4 },
 
+  /** 지원하는 학기 값 (순서대로). 학기 관련 목록은 모두 여기서 가져다 쓴다 */
+  SEMESTERS: ["1", "summer", "2", "winter"],
+  /** 화면용 학기 이름: 긴 이름(표·제목), 짧은 이름(그래프 축 "26-여름") */
+  SEMESTER_LABEL: { "1": "1학기", "summer": "여름학기", "2": "2학기", "winter": "겨울학기" },
+  SEMESTER_SHORT: { "1": "1", "summer": "여름", "2": "2", "winter": "겨울" },
+
   /** 패스/페일 과목: 이수 학점에는 들어가지만 평점(GPA) 계산에서는 빠진다 */
   PASS_FAIL_GRADES: ["PASS", "FAIL"],
 
@@ -180,8 +186,22 @@ const GPA = {
       });
   },
 
-  /** 졸업 이수 학점 (목표 GPA 시뮬레이터 기준) */
+  /** 졸업 이수 학점 기본값 (목표 GPA 시뮬레이터 기준, 설정 탭에서 GRADUATION_MIN ~ MAX 사이로 바꿀 수 있다) */
   GRADUATION_CREDITS: 130,
+  GRADUATION_MIN: 1,
+  GRADUATION_MAX: 300,
+
+  /** 목표 평점 입력값 → 숫자 (비었거나 0 ~ 4.5 밖이면 null) */
+  parseTarget(value) {
+    const text = String(value ?? "").trim();
+    const n = Number(text);
+    return text && Number.isFinite(n) && n >= 0 && n <= this.GRADE_POINTS["A+"] ? n : null;
+  },
+
+  /** 졸업 학점으로 쓸 수 있는 값인지 (GRADUATION_MIN ~ MAX 사이 정수) */
+  isGraduationCredits(n) {
+    return Number.isInteger(n) && n >= this.GRADUATION_MIN && n <= this.GRADUATION_MAX;
+  },
 
   /**
    * 목표 GPA 시뮬레이션: 졸업까지 남은 학점에서 평균 몇 점을 받아야 목표 평점에 닿는지 계산한다.
