@@ -13,11 +13,10 @@ const SettingsView = {
       <div class="card settings-row">
         <div>
           <h2>닉네임</h2>
-          <p class="muted">메인 화면 인사말에 쓰여요.</p>
+          <p class="muted">${LoginView.isGuest() ? "게스트로 이용 중이에요." : "Google 계정 이름을 사용해요. 메인 화면 인사말에도 표시돼요."}</p>
         </div>
         <div class="settings-control">
           <input type="text" value="${UI.escape(DashboardView.NICKNAME)}" disabled />
-          <button class="btn" disabled>저장</button>
         </div>
       </div>
 
@@ -64,7 +63,6 @@ const SettingsView = {
         </div>
       </div>
 
-      <span class="placeholder-note">닉네임 저장은 준비 중이에요.</span>
     `;
 
     this.el().querySelector('[data-action="logout"]').addEventListener("click", async (event) => {
