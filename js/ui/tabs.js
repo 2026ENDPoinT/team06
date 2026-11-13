@@ -1,7 +1,7 @@
 /**
  * [담당: 프론트엔드] 탭(책갈피) 전환
  *
- * 주소 끝의 #hash 로 현재 탭을 구분한다. (#login, #dashboard, #courses, #stats, #settings)
+ * 주소 끝의 #hash 로 현재 탭을 구분한다. (#login, #dashboard, #courses, #stats, #memo, #settings)
  * → 새로고침해도 보던 탭이 유지되고, 브라우저 뒤로가기도 동작한다.
  *
  * 새 탭 추가 방법:
@@ -19,6 +19,7 @@ const Tabs = {
     dashboard: DashboardView,
     courses: CoursesView,
     stats: StatsView,
+    memo: MemoView,
     settings: SettingsView,
   },
 
