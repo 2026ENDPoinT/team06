@@ -59,8 +59,8 @@ const Validator = {
     }
 
     // 성적 등급
-    if (!Object.hasOwn(GPA.GRADE_POINTS, grade)) {
-      errors.push("지원하지 않는 성적 등급입니다. (A+ ~ F 중 선택)");
+    if (!GPA.isValidGrade(grade)) {
+      errors.push("지원하지 않는 성적 등급입니다. (-, A+ ~ F, PASS, FAIL 중 선택)");
     }
 
     return { ok: errors.length === 0, errors };

@@ -32,11 +32,7 @@ const DashboardView = {
     const latest = semesters[semesters.length - 1];
     const previous = semesters[semesters.length - 2];
 
-    // GPA 기능이 연결되기 전에는 그래프만 예시 데이터로 보여준다
-    const usingSample = semesters.length === 0;
-    const points = usingSample
-      ? StatsView.SAMPLE.semesters.map((s) => ({ label: s.label, gpa: s.gpa }))
-      : semesters.map((s) => ({ label: this.shortLabel(s.semesterKey), gpa: s.gpa }));
+    const points = semesters.map((s) => ({ label: this.shortLabel(s.semesterKey), gpa: s.gpa }));
 
     this.el().innerHTML = `
       <h1 class="greeting"><span class="nickname">${UI.escape(this.NICKNAME)}</span>님의 성적은 이래왔어요</h1>
@@ -60,7 +56,6 @@ const DashboardView = {
       <div class="dash-main">
         <div class="chart-area">
           <h2 class="chart-title">학기별 평점</h2>
-          ${usingSample ? `<span class="placeholder-note">예시 그래프 · 기능 연결 후 실제 데이터로 바뀌어요</span>` : ""}
           ${this.lineChart(points)}
         </div>
 
