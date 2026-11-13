@@ -7,7 +7,8 @@
  */
 const CoursesView = {
   el: () => document.getElementById("view-courses"),
-  GRADES: ["A+", "A0", "B+", "B0", "C+", "C0", "D+", "D0", "F"],
+  // 맨 앞의 "-"(성적 미입력)가 새 과목의 기본 선택값
+  GRADES: [GPA.NO_GRADE, ...GPA.ALL_GRADES],
   SEMESTER_ORDER: { "1": 1, summer: 2, "2": 3, winter: 4 },
 
   selectedKey: null,  // 선택된 학기 탭 ("2026-1")
@@ -153,6 +154,8 @@ const CoursesView = {
       if (this.editingId) CourseService.update(this.editingId, data);
       else CourseService.add(data);
 
+      // 과목이 생긴 학기는 더 이상 '빈 학기'가 아님 → 과목을 다 지우면 탭도 바로 사라진다
+      this.emptySemesters.delete(this.selectedKey);
       this.editingId = null;
       this.render();
     });

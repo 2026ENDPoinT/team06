@@ -60,9 +60,10 @@ js/app.js                시작점 (2줄)
   year: 2026,             // number, 연도
   semester: "1",          // "1" | "summer" | "2" | "winter"
   credits: 3,             // number, 0보다 커야 함
-  grade: "A+"             // "A+" | "A0" | "B+" | "B0" | "C+" | "C0" | "D+" | "D0" | "F"
+  grade: "A+"             // "A+" | "A0" | "B+" | "B0" | "C+" | "C0" | "D+" | "D0" | "F" | "PASS" | "FAIL" | "-"
 }
 ```
+`PASS` / `FAIL` 과목과 성적 미입력(`"-"`) 과목은 이수 학점(`GPA.sumCredits`)에는 포함되지만 평점(`GPA.calcGPA`) 계산에서는 제외됩니다. `"-"`는 성적 분포에도 들어가지 않습니다.
 학기 키(semesterKey)는 `"${year}-${semester}"` 형식입니다. 예) `"2026-1"`
 
 ## 모듈 인터페이스
@@ -71,7 +72,7 @@ js/app.js                시작점 (2줄)
 | `GPA.calcGPA(courses)` | `number \| null` (과목이 없으면 null) |
 | `GPA.sumCredits(courses)` | `number` |
 | `GPA.summarizeBySemester(courses)` | `[{ semesterKey, courses, gpa, credits }]` (학기 오름차순) |
-| `GPA.gradeDistribution(courses)` | `{ "A+": 3, "A0": 1, ..., "F": 0 }` |
+| `GPA.gradeDistribution(courses)` | `{ "A+": 3, "A0": 1, ..., "F": 0, "PASS": 1, "FAIL": 0 }` |
 | `Validator.validateCourse(input)` | `{ ok, errors: string[] }` |
 | `CourseService.init()` / `getAll()` / `getById(id)` / `add(data)` / `update(id, data)` / `remove(id)` | |
 | `DataStore.load()` / `DataStore.save(courses)` | |

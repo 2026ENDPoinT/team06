@@ -15,7 +15,7 @@ const DataStore = {
       && Number.isInteger(course.year)
       && ["1", "summer", "2", "winter"].includes(course.semester)
       && Number.isFinite(course.credits) && course.credits > 0
-      && ["A+", "A0", "B+", "B0", "C+", "C0", "D+", "D0", "F"].includes(course.grade);
+      && GPA.isValidGrade(course.grade);
   },
 
   /**

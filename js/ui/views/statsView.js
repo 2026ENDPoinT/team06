@@ -1,34 +1,45 @@
 /**
  * [담당: 프론트엔드] 탭 3 — 성적 분석(시각화)
  *
- * 지금은 화면 확인용 예시 데이터(SAMPLE)로 그린다.
- * GPA.summarizeBySemester / GPA.gradeDistribution 이 구현되면 SAMPLE 대신 실제 데이터로 교체.
+ * 데이터: CourseService.getAll() → GPA.summarizeBySemester / GPA.gradeDistribution
  * 차트 라이브러리(Chart.js 등)를 쓸 경우 각 chart 함수 내부만 바꾸면 된다.
  */
 const StatsView = {
   el: () => document.getElementById("view-stats"),
 
-  // TODO: 실제 데이터 연결 후 삭제
-  SAMPLE: {
-    semesters: [
-      { label: "25-1", gpa: 3.42, credits: 18 },
-      { label: "25-2", gpa: 3.78, credits: 19 },
-      { label: "26-1", gpa: 4.05, credits: 18 },
-      { label: "26-2", gpa: 3.91, credits: 17 },
-    ],
-    grades: { "A+": 6, "A0": 5, "B+": 4, "B0": 3, "C+": 1, "C0": 1, "D+": 0, "D0": 0, "F": 0 },
+  /** 그래프 아래 짧은 학기 라벨용 */
+  SHORT_SEMESTER: { "1": "1", "summer": "여름", "2": "2", "winter": "겨울" },
+
+  /** (2026, "summer") → "26-여름" */
+  shortLabel(year, semester) {
+    return `${String(year).slice(-2)}-${this.SHORT_SEMESTER[semester] ?? semester}`;
   },
 
   render() {
-    const { semesters, grades } = this.SAMPLE;
+    const courses = CourseService.getAll();
+    const header = UI.pageHeader("성적 분석", "학기별 추이와 성적 분포를 그래프로 확인합니다.");
+
+    if (courses.length === 0) {
+      this.el().innerHTML = `
+        ${header}
+        <div class="card"><p class="empty">등록된 과목이 없습니다. 학기별 과목 탭에서 과목을 추가해 주세요.</p></div>`;
+      return;
+    }
+
+    const semesters = GPA.summarizeBySemester(courses).map((s) => ({
+      label: UI.escape(this.shortLabel(s.courses[0].year, s.courses[0].semester)),
+      gpa: s.gpa,
+      credits: s.credits,
+    }));
+    const grades = GPA.gradeDistribution(courses);
+    const creditMax = Math.max(24, ...semesters.map((s) => s.credits));
 
     this.el().innerHTML = `
-      ${UI.pageHeader("성적 분석", "학기별 추이와 성적 분포를 그래프로 확인합니다.")}
-      <span class="placeholder-note">예시 데이터로 표시 중 — 기능 연결 후 실제 데이터로 바뀝니다</span>
+      ${header}
 
       <div class="card">
         <h2>학기별 평점 추이</h2>
-        ${this.barChart(semesters.map((s) => ({ label: s.label, value: s.gpa, text: s.gpa.toFixed(2) })), 4.5)}
+        ${this.barChart(semesters.map((s) => ({ label: s.label, value: s.gpa ?? 0, text: UI.formatGPA(s.gpa) })), 4.5)}
       </div>
 
       <div class="grid-2">
@@ -38,7 +49,7 @@ const StatsView = {
         </div>
         <div class="card">
           <h2>학기별 이수 학점</h2>
-          ${this.barChart(semesters.map((s) => ({ label: s.label, value: s.credits, text: `${s.credits}` })), 24, "soft")}
+          ${this.barChart(semesters.map((s) => ({ label: s.label, value: s.credits, text: `${s.credits}` })), creditMax, "soft")}
         </div>
       </div>
     `;
